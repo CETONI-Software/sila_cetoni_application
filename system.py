@@ -35,7 +35,7 @@ from enum import Enum
 
 # import qmixsdk
 from qmixsdk import qmixbus, qmixpump, qmixcontroller, qmixanalogio, qmixdigio, qmixmotion, qmixvalve
-from device_drivers import sartorius_balance
+from ..device_drivers import sartorius_balance
 
 from .device import DeviceConfiguration, Device, PumpDevice, AxisSystemDevice, \
                     ValveDevice, ControllerDevice, IODevice, BalanceDevice

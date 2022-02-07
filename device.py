@@ -33,7 +33,7 @@ from lxml import etree, objectify
 from qmixsdk import qmixbus, qmixpump, qmixcontroller, qmixanalogio, qmixdigio, \
                     qmixmotion, qmixvalve
 
-from device_drivers import balance
+from ..device_drivers import balance
 
 class Device():
     """

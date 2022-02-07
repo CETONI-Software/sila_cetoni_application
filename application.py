@@ -45,7 +45,7 @@ from qmixsdk import qmixpump
 from .system import ApplicationSystem
 from .singleton import Singleton
 
-from util.local_ip import LOCAL_IP
+from ..util.local_ip import LOCAL_IP
 
 DEFAULT_BASE_PORT = 50051
 
@@ -173,10 +173,10 @@ class Application(metaclass=Singleton):
             server_name = pump.name.replace("_", " ")
 
             if isinstance(pump, qmixpump.ContiFlowPump):
-                from new.pumps.contiflowpumps.contiflowpump_service.server import Server
+                from ..pumps.contiflowpumps.contiflowpump_service.server import Server
                 server = Server(pump, server_name, server_type) #, server_uuid=)
             else:
-                from new.pumps.syringepumps.syringepump_service import Server
+                from ..pumps.syringepumps.syringepump_service import Server
                 server = Server(pump, pump.valves[0], pump.io_channels, server_name, server_type) #, server_uuid=)
             servers += [server]
 
@@ -185,7 +185,7 @@ class Application(metaclass=Singleton):
         for axis_system in self.system.axis_systems:
             server_name = axis_system.name.replace("_", " ")
 
-            from new.motioncontrol.axis.axis_service.server import Server
+            from ..motioncontrol.axis.axis_service.server import Server
             server = Server(axis_system, axis_system.io_channels, server_name, server_type) #, server_uuid=)
             servers += [server]
 
@@ -194,7 +194,7 @@ class Application(metaclass=Singleton):
         for valve_device in self.system.valves:
             server_name = valve_device.name.replace("_", " ")
 
-            from new.valves.valve_service.server import Server
+            from ..valves.valve_service.server import Server
             server = Server(valve_device.valves, server_name, server_type) #, server_uuid=)
             servers += [server]
 
@@ -203,7 +203,7 @@ class Application(metaclass=Singleton):
         for controller_device in self.system.controllers:
             server_name = controller_device.name.replace("_", " ")
 
-            from new.controllers.control_loop_service.server import Server
+            from ..controllers.control_loop_service.server import Server
             server = Server(controller_device.controller_channels, server_name, server_type) #, server_uuid=)
             servers += [server]
 
@@ -212,7 +212,7 @@ class Application(metaclass=Singleton):
         for io_device in self.system.io_devices:
             server_name = io_device.name.replace("_", " ")
 
-            from new.io.io_service.server import Server
+            from ..io.io_service.server import Server
             server = Server(io_device.io_channels, server_name, server_type) #, server_uuid=)
             servers += [server]
 
@@ -221,7 +221,7 @@ class Application(metaclass=Singleton):
         for balance in self.system.balances:
             server_name = balance.name.replace("_", " ")
 
-            from new.balance.balance_service.server import Server
+            from ..balance.balance_service.server import Server
             server = Server(balance.device, server_name, server_type) #, server_uuid=)
             servers += [server]
 
