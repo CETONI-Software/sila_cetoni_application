@@ -60,47 +60,14 @@ class Application(metaclass=Singleton):
 
     system: ApplicationSystem
 
-    key_cert_path: str
     base_port: int
     servers: List[SilaServer]
 
     def __init__(self, device_config_path: str = "", base_port: int = DEFAULT_BASE_PORT):
 
         self.system = ApplicationSystem(device_config_path)
-        self._generate_self_signed_cert()
 
         self.base_port = base_port
-
-    def _generate_self_signed_cert(self):
-        """
-        Generates a self-signed SSL key/certificate pair on the fly
-        """
-
-        self.key_cert_path = os.path.join(os.path.dirname(__file__), "..", ".ssl", "sila_cetoni.{}")
-        os.makedirs(os.path.dirname(self.key_cert_path), exist_ok=True)
-
-        private_key = crypto.PKey()
-        private_key.generate_key(crypto.TYPE_RSA, 4096)
-
-        # create a self-signed cert
-        cert = crypto.X509()
-        cert.get_subject().C = "DE"
-        cert.get_subject().ST = "TH"
-        cert.get_subject().O = "CETONI"
-        cert.get_subject().CN = "SiLA2"
-        cert.set_serial_number(1)
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(365 * 24 * 60 * 60)
-        cert.set_issuer(cert.get_subject())
-
-        cert.set_pubkey(private_key)
-        cert.sign(private_key, "sha512")  # signing certificate with public key
-
-        # writing key / cert pair
-        with open(self.key_cert_path.format("crt"), "wt") as f:
-            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))
-        with open(self.key_cert_path.format("key"), "wt") as f:
-            f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, private_key).decode("utf-8"))
 
     def run(self):
         """
@@ -143,7 +110,11 @@ class Application(metaclass=Singleton):
         logging.debug("Starting SiLA 2 servers...")
         port = self.base_port
         for server in self.servers:
-            server.start_insecure(LOCAL_IP, port)
+            try:
+                server.start(LOCAL_IP, port)
+            except RuntimeError as err:
+                logger.error(str(err))
+                self.stop()
             port += 1
         logging.info("All servers started!")
 
@@ -164,8 +135,6 @@ class Application(metaclass=Singleton):
         servers = []
         # common args for all servers
         server_type = "TestServer"
-        encryption_key = self.key_cert_path.format("key")
-        encryption_cert = self.key_cert_path.format("crt")
 
         # ---------------------------------------------------------------------
         # pumps
