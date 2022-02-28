@@ -43,8 +43,8 @@ sys.path.append(os.path.join(CETONI_SDK_PATH, "lib", "python"))
 # only used for type hinting
 from qmixsdk import qmixpump
 
-from ..util.local_ip import LOCAL_IP
 from .config import Config
+from .local_ip import LOCAL_IP
 from .singleton import Singleton
 from .system import ApplicationSystem
 
