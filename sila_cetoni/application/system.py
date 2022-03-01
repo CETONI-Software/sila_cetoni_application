@@ -119,13 +119,13 @@ class ApplicationSystem(metaclass=Singleton):
         self.balances = self.get_availabe_balances()
         self.lcms = self.get_availabe_lcms()
 
-        logger.debug(f"Pumps: {repr(self.pumps)}")
-        logger.debug(f"axis: {repr(self.axis_systems)}")
-        logger.debug(f"valve devices: {repr(self.valves)}")
-        logger.debug(f"controller devices: {repr(self.controllers)}")
-        logger.debug(f"io devices: {repr(self.io_devices)}")
-        logger.debug(f"balance devices: {repr(self.balances)}")
-        logger.debug(f"lcms: {repr(self.lcms)}")
+        logger.debug(f"Pumps: {self.pumps!r}")
+        logger.debug(f"axis: {self.axis_systems!r}")
+        logger.debug(f"valve devices: {self.valves!r}")
+        logger.debug(f"controller devices: {self.controllers!r}")
+        logger.debug(f"io devices: {self.io_devices!r}")
+        logger.debug(f"balance devices: {self.balances!r}")
+        logger.debug(f"lcms: {self.lcms!r}")
 
         self.state = SystemState.OPERATIONAL
 
