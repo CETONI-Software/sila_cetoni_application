@@ -31,7 +31,7 @@ class Config:
             self.write()
 
     @staticmethod
-    def __config_dir(self, subdir: str = "") -> str:
+    def __config_dir(subdir: str = "") -> str:
         """
         Returns the path to the directory where the configuration file is located
         """
