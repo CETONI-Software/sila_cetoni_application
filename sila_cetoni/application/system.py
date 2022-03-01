@@ -35,7 +35,8 @@ from typing import List
 # import qmixsdk
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
-from ..device_drivers.balance import sartorius_balance
+from sila_cetoni.balance.device_drivers import sartorius_balance
+
 from . import CETONI_SDK_PATH
 from .config import Config
 from .device import (

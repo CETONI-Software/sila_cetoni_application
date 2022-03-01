@@ -142,7 +142,7 @@ class Application(metaclass=Singleton):
             server_name = pump.name.replace("_", " ")
 
             if isinstance(pump, qmixpump.ContiFlowPump):
-                from ..pumps.contiflowpumps.contiflowpump_service.server import Server
+                from sila_cetoni.pumps.contiflowpumps.sila.contiflowpump_service.server import Server
 
                 server = Server(
                     pump=pump,
@@ -151,7 +151,7 @@ class Application(metaclass=Singleton):
                     server_uuid=Config(pump.name).server_uuid,
                 )
             else:
-                from ..pumps.syringepumps.syringepump_service import Server
+                from sila_cetoni.pumps.syringepumps.sila.syringepump_service import Server
 
                 server = Server(
                     pump=pump,
@@ -168,7 +168,7 @@ class Application(metaclass=Singleton):
         for axis_system in self.system.axis_systems:
             server_name = axis_system.name.replace("_", " ")
 
-            from ..motioncontrol.axis.axis_service.server import Server
+            from sila_cetoni.motioncontrol.axis.sila.axis_service.server import Server
 
             server = Server(
                 axis_system=axis_system,
@@ -185,7 +185,7 @@ class Application(metaclass=Singleton):
         for valve_device in self.system.valves:
             server_name = valve_device.name.replace("_", " ")
 
-            from ..valves.valve_service.server import Server
+            from sila_cetoni.valves.sila.valve_service.server import Server
 
             server = Server(
                 valves=valve_device.valves,
@@ -200,7 +200,7 @@ class Application(metaclass=Singleton):
         for controller_device in self.system.controllers:
             server_name = controller_device.name.replace("_", " ")
 
-            from ..controllers.control_loop_service.server import Server
+            from sila_cetoni.controllers.sila.control_loop_service.server import Server
 
             server = Server(
                 controller_channels=controller_device.controller_channels,
@@ -215,7 +215,7 @@ class Application(metaclass=Singleton):
         for io_device in self.system.io_devices:
             server_name = io_device.name.replace("_", " ")
 
-            from ..io.io_service.server import Server
+            from sila_cetoni.io.sila.io_service.server import Server
 
             server = Server(
                 io_channels=io_device.io_channels,
@@ -230,7 +230,7 @@ class Application(metaclass=Singleton):
         for balance in self.system.balances:
             server_name = balance.name.replace("_", " ")
 
-            from ..balance.balance_service.server import Server
+            from sila_cetoni.balance.sila.balance_service.server import Server
 
             server = Server(
                 balance=balance.device,

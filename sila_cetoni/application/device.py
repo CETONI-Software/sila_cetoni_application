@@ -34,7 +34,7 @@ from lxml import etree, objectify
 # import qmixsdk
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
-from ..device_drivers import balance
+from sila_cetoni.balance.device_drivers import BalanceInterface
 
 
 class Device:
@@ -169,9 +169,9 @@ class BalanceDevice(Device):
     Simple class to represent a balance device
     """
 
-    device: balance.BalanceInterface
+    device: BalanceInterface
 
-    def __init__(self, name: str, device: balance.BalanceInterface = None):
+    def __init__(self, name: str, device: BalanceInterface = None):
         super().__init__(name)
 
         self.device = device
