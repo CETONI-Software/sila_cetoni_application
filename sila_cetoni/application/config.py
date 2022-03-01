@@ -24,7 +24,7 @@ class Config:
         self.__config_path = os.path.join(self.__config_dir(subdir), name + ".ini")
         self.__parser = ConfigParser()
         if not self.__parser.read(self.__config_path):
-            logging.warning(f"Could not read config file! Creating a new one ({self.__config_path}")
+            logging.warning(f"Could not read config file! Creating a new one ({self.__config_path})")
             self.__add_default_values()
             self.write()
 
@@ -80,7 +80,10 @@ class Config:
         The keys of the returned dictionary are the axis names and the values are
         the position counter values.
         """
-        return self.__parser["axis_position_counters"]
+        if self.__parser.has_section("axis_position_counters"):
+            return dict(self.__parser["axis_position_counters"])
+        else:
+            return dict()
 
     @axis_position_counters.setter
     def axis_position_counters(self, position_counters: Dict[str, int]):
