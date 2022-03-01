@@ -35,6 +35,7 @@ from lxml import etree, objectify
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
 from sila_cetoni.balance.device_drivers import BalanceInterface
+from sila_cetoni.lcms.device_drivers import LCMSInterface
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,19 @@ class BalanceDevice(Device):
     device: BalanceInterface
 
     def __init__(self, name: str, device: BalanceInterface = None):
+        super().__init__(name)
+
+        self.device = device
+
+
+class LCMSDevice(Device):
+    """
+    Simple class to represent an LC/MS device
+    """
+
+    device: LCMSInterface
+
+    def __init__(self, name: str, device: LCMSInterface = None):
         super().__init__(name)
 
         self.device = device

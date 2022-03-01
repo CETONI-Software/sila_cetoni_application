@@ -30,12 +30,13 @@ import sys
 import threading
 import time
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 # import qmixsdk
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
 from sila_cetoni.balance.device_drivers import sartorius_balance
+from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
 
 from . import CETONI_SDK_PATH
 from .config import Config
@@ -46,6 +47,7 @@ from .device import (
     Device,
     DeviceConfiguration,
     IODevice,
+    LCMSDevice,
     PumpDevice,
     ValveDevice,
 )
@@ -79,7 +81,7 @@ class ApplicationSystem(metaclass=Singleton):
     """
 
     device_config: DeviceConfiguration = None
-    bus: qmixbus.Bus = None
+    bus: Optional[qmixbus.Bus] = None
     monitoring_thread: threading.Thread
 
     pumps: List[PumpDevice] = []
@@ -88,6 +90,7 @@ class ApplicationSystem(metaclass=Singleton):
     controllers: List[ControllerDevice] = []
     io_devices: List[IODevice] = []
     balances: List[BalanceDevice] = []
+    lcms: Optional[LCMSDevice] = None
 
     state: SystemState
 
@@ -114,6 +117,7 @@ class ApplicationSystem(metaclass=Singleton):
             self.io_devices = self.get_availabe_io_channels()
 
         self.balances = self.get_availabe_balances()
+        self.lcms = self.get_availabe_lcms()
 
         logger.debug(f"Pumps: {repr(self.pumps)}")
         logger.debug(f"axis: {repr(self.axis_systems)}")
@@ -121,6 +125,7 @@ class ApplicationSystem(metaclass=Singleton):
         logger.debug(f"controller devices: {repr(self.controllers)}")
         logger.debug(f"io devices: {repr(self.io_devices)}")
         logger.debug(f"balance devices: {repr(self.balances)}")
+        logger.debug(f"lcms: {repr(self.lcms)}")
 
         self.state = SystemState.OPERATIONAL
 
@@ -128,7 +133,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Starts the CAN bus communications and the bus monitoring and enables devices
         """
-        if self.bus:
+        if self.bus is not None:
             self.start_bus_and_enable_devices()
             self._start_bus_monitoring()
 
@@ -138,8 +143,10 @@ class ApplicationSystem(metaclass=Singleton):
         """
         logger.debug("Stopping application system...")
         self.state = SystemState.SHUTDOWN
-        if self.bus:
+        if self.bus is not None:
             self.stop_and_close_bus()
+        if self.lcms is not None:
+            self.lcms.device.stop()
 
     def shutdown(self):
         """
@@ -460,3 +467,24 @@ class ApplicationSystem(metaclass=Singleton):
             balances += [balance_device]
 
         return balances
+
+    # -------------------------------------------------------------------------
+    # LC/MS
+    def get_availabe_lcms(self) -> Optional[LCMSDevice]:
+        """
+        Checks for a possible LC/MS device and returns it if found
+
+        :return: The connected LC/MS device if there is one
+
+        :note: We currently only support a single LC/MS device
+        """
+
+        logger.debug("Looking for LC/MS")
+
+        lcms = shimadzu_lcms2020.ShimadzuLCMS2020()
+        try:
+            lcms.open()
+            logger.debug("Found LC/MS named %s", lcms.instrument_name)
+            return LCMSDevice(lcms.instrument_name, lcms)
+        except shimadzu_lcms2020.LabSolutionsStartException:
+            pass

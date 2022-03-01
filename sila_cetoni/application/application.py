@@ -241,4 +241,20 @@ class Application(metaclass=Singleton):
             )
             servers += [server]
 
+        # ---------------------------------------------------------------------
+        # lcms
+        lcms = self.system.lcms
+        if lcms is not None:
+            server_name = lcms.name.replace("_", " ")
+
+            from sila_cetoni.lcms.sila.spectrometry_service.server import Server
+
+            server = Server(
+                lcms=lcms.device,
+                server_name=server_name,
+                server_type=server_type,
+                server_uuid=Config(lcms.name).server_uuid,
+            )
+            servers += [server]
+
         return servers

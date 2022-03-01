@@ -29,7 +29,7 @@ def parse_command_line():
         help=(
             "Path to a valid CETONI device configuration folder "
             "(This is only necessary if you want to control CETONI devices. Controlling other devices that have their "
-            "own drivers in the 'device_drivers' subdirectory don't need a configuration.If you don't have a "
+            "own drivers in the 'device_drivers' subdirectory don't need a configuration. If you don't have a "
             "configuration yet, create one with the CETONI Elements software first.)"
         ),
     )
