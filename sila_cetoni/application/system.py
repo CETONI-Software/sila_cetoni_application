@@ -51,6 +51,8 @@ from .device import (
 )
 from .singleton import Singleton
 
+logger = logging.getLogger(__name__)
+
 
 class SystemState(Enum):
     """
@@ -92,7 +94,7 @@ class ApplicationSystem(metaclass=Singleton):
     MAX_SECONDS_WITHOUT_BATTERY = 20
 
     def __init__(self, device_config_path: str = ""):
-        logging.debug("Looking up devices...")
+        logger.debug("Looking up devices...")
 
         if device_config_path:
             self.device_config = DeviceConfiguration(device_config_path)
@@ -113,12 +115,12 @@ class ApplicationSystem(metaclass=Singleton):
 
         self.balances = self.get_availabe_balances()
 
-        logging.debug(f"Pumps: {repr(self.pumps)}")
-        logging.debug(f"axis: {repr(self.axis_systems)}")
-        logging.debug(f"valve devices: {repr(self.valves)}")
-        logging.debug(f"controller devices: {repr(self.controllers)}")
-        logging.debug(f"io devices: {repr(self.io_devices)}")
-        logging.debug(f"balance devices: {repr(self.balances)}")
+        logger.debug(f"Pumps: {repr(self.pumps)}")
+        logger.debug(f"axis: {repr(self.axis_systems)}")
+        logger.debug(f"valve devices: {repr(self.valves)}")
+        logger.debug(f"controller devices: {repr(self.controllers)}")
+        logger.debug(f"io devices: {repr(self.io_devices)}")
+        logger.debug(f"balance devices: {repr(self.balances)}")
 
         self.state = SystemState.OPERATIONAL
 
@@ -134,7 +136,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Stops the CAN bus monitoring and the bus communication
         """
-        logging.debug("Stopping application system...")
+        logger.debug("Stopping application system...")
         self.state = SystemState.SHUTDOWN
         if self.bus:
             self.stop_and_close_bus()
@@ -146,7 +148,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         self.stop()
         if self.device_config.has_battery:
-            logging.debug("Shutting down...")
+            logger.debug("Shutting down...")
             os.system("sudo shutdown now")
 
     def _start_bus_monitoring(self):
@@ -162,7 +164,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Opens the given device config and starts the bus communication
         """
-        logging.debug("Opening bus...")
+        logger.debug("Opening bus...")
         try:
             # If we're executed through python.exe the application dir is the
             # directory where python.exe is located. In order for the SDK to find
@@ -170,14 +172,14 @@ class ApplicationSystem(metaclass=Singleton):
             # path.
             self.bus.open(self.device_config.path, os.path.join(CETONI_SDK_PATH, "plugins", "labbcan"))
         except qmixbus.DeviceError as err:
-            logging.error("Could not open the bus communication: %s", err)
+            logger.error("Could not open the bus communication: %s", err)
             sys.exit(1)
 
     def start_bus_and_enable_devices(self):
         """
         Starts the bus communication and enables all devices
         """
-        logging.debug("Starting bus and enabling devices...")
+        logger.debug("Starting bus and enabling devices...")
         self.bus.start()
         self.enable_pumps()
         self.enable_axis_systems()
@@ -186,7 +188,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Stops and closes the bus communication
         """
-        logging.debug("Closing bus...")
+        logger.debug("Closing bus...")
         self.bus.stop()
         self.bus.close()
 
@@ -226,7 +228,7 @@ class ApplicationSystem(metaclass=Singleton):
             event = self.bus.read_event()
             if not event.is_valid():
                 continue
-            logging.debug(
+            logger.debug(
                 f"event id: {event.event_id}, device: {event.device}, " f"data: {event.data}, message: {event.string}"
             )
 
@@ -234,7 +236,7 @@ class ApplicationSystem(metaclass=Singleton):
                 is_dc_link_under_voltage_event(event) or is_heartbeat_err_occurred_event(event)
             ):
                 self.state = SystemState.STOPPED
-                logging.debug("System entered 'Stopped' state")
+                logger.debug("System entered 'Stopped' state")
 
             if self.device_config.has_battery and self.state.is_stopped():
                 seconds_stopped += 1
@@ -244,13 +246,13 @@ class ApplicationSystem(metaclass=Singleton):
 
             if self.state.is_stopped() and is_heartbeat_err_resolved_event(event):
                 self.state = SystemState.OPERATIONAL
-                logging.debug("System entered 'Operational' state")
+                logger.debug("System entered 'Operational' state")
                 for device in self.device_config.devices:
                     device.set_operational()
                     if isinstance(device, PumpDevice):
                         drive_pos_counter = Config(device.name).pump_drive_position_counter
                         if drive_pos_counter is not None:
-                            logging.debug(f"Restoring drive position counter: {drive_pos_counter}")
+                            logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
                             device.restore_position_counter_value(drive_pos_counter)
 
     # -------------------------------------------------------------------------
@@ -263,7 +265,7 @@ class ApplicationSystem(metaclass=Singleton):
         :return: A list of all found pumps
         """
         pump_count = qmixpump.Pump.get_no_of_pumps()
-        logging.debug("Number of pumps: %s", pump_count)
+        logger.debug("Number of pumps: %s", pump_count)
 
         pumps = []
 
@@ -271,11 +273,11 @@ class ApplicationSystem(metaclass=Singleton):
             pump = qmixpump.Pump()
             pump.lookup_by_device_index(i)
             pump_name = pump.get_device_name()
-            logging.debug("Found pump %d named %s", i, pump_name)
+            logger.debug("Found pump %d named %s", i, pump_name)
             try:
                 pump.get_device_property(qmixpump.ContiFlowProperty.SWITCHING_MODE)
                 pump = qmixpump.ContiFlowPump(pump.handle)
-                logging.debug("Pump %s is contiflow pump", pump_name)
+                logger.debug("Pump %s is contiflow pump", pump_name)
             except qmixbus.DeviceError:
                 pass
             pump_device = self.device_config.device_by_name(pump_name)
@@ -304,7 +306,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
 
         system_count = qmixmotion.AxisSystem.get_axis_system_count()
-        logging.debug("Number of axis systems: %s", system_count)
+        logger.debug("Number of axis systems: %s", system_count)
 
         axis_systems = []
 
@@ -312,7 +314,7 @@ class ApplicationSystem(metaclass=Singleton):
             axis_system = qmixmotion.AxisSystem()
             axis_system.lookup_by_device_index(i)
             axis_system_name = axis_system.get_device_name()
-            logging.debug("Found axis system %d named %s", i, axis_system.get_device_name())
+            logger.debug("Found axis system %d named %s", i, axis_system.get_device_name())
             axis_system_device = self.device_config.device_by_name(axis_system_name)
             AxisSystemDevice.convert_to_class(axis_system_device, handle=axis_system.handle)
             axis_systems += [axis_system_device]
@@ -337,7 +339,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
 
         valve_count = qmixvalve.Valve.get_no_of_valves()
-        logging.debug("Number of valves: %s", valve_count)
+        logger.debug("Number of valves: %s", valve_count)
 
         valves = []
 
@@ -356,11 +358,11 @@ class ApplicationSystem(metaclass=Singleton):
                 # name of one of the non-existent contiflow valves is requested.
                 # We can fortunately mitigate this with this try-except here.
                 continue
-            logging.debug("Found valve %d named %s", i, valve_name)
+            logger.debug("Found valve %d named %s", i, valve_name)
 
             for device in self.device_config.devices:
                 if device.name.rsplit("_Pump", 1)[0] in valve_name:
-                    logging.debug(f"Valve {valve_name} belongs to device {device}")
+                    logger.debug(f"Valve {valve_name} belongs to device {device}")
                     if "QmixIO" in device.name:
                         # These valve devices are actually just convenience devices
                         # that operate on digital I/O channels. Hence, they can be
@@ -382,14 +384,14 @@ class ApplicationSystem(metaclass=Singleton):
         :return: A list of all controller devices
         """
         channel_count = qmixcontroller.ControllerChannel.get_no_of_channels()
-        logging.debug("Number of controller channels: %s", channel_count)
+        logger.debug("Number of controller channels: %s", channel_count)
 
         channels = []
 
         for i in range(channel_count):
             channel = qmixcontroller.ControllerChannel()
             channel.lookup_channel_by_index(i)
-            logging.debug("Found controller channel %d named %s", i, channel.get_name())
+            logger.debug("Found controller channel %d named %s", i, channel.get_name())
             channels.append(channel)
 
         return self.device_config.add_channels_to_device(channels)
@@ -414,13 +416,13 @@ class ApplicationSystem(metaclass=Singleton):
         }.items():
 
             channel_count = ChannelType.get_no_of_channels()
-            logging.debug("Number of %s channels: %s", description, channel_count)
+            logger.debug("Number of %s channels: %s", description, channel_count)
 
             for i in range(channel_count):
                 channel = ChannelType()
                 channel.lookup_channel_by_index(i)
                 channel_name = channel.get_name()
-                logging.debug("Found %s channel %d named %s", description, i, channel_name)
+                logger.debug("Found %s channel %d named %s", description, i, channel_name)
                 channels.append(channel)
 
         return self.device_config.add_channels_to_device(channels)
@@ -437,7 +439,7 @@ class ApplicationSystem(metaclass=Singleton):
         # for now we assume that at most one balance is connected until we get
         # proper balance support in the SDK
         balance_count = 1
-        logging.debug("Number of balances: %s", balance_count)
+        logger.debug("Number of balances: %s", balance_count)
 
         balances = []
 
@@ -449,7 +451,7 @@ class ApplicationSystem(metaclass=Singleton):
                 continue
             # 'guess' the balance name for now
             balance_name = f"Sartorius_Balance_{i+1}"
-            logging.debug("Found balance %d named %s", i, balance_name)
+            logger.debug("Found balance %d named %s", i, balance_name)
             if self.device_config:
                 balance_device = self.device_config.device_by_name(balance_name)
                 BalanceDevice.convert_to_class(balance_device, device=bal)

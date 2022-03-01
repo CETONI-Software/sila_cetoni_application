@@ -46,7 +46,7 @@ def parse_command_line():
 
 def main():
     logging_level = logging.DEBUG  # or use logging.ERROR for less output
-    LOGGING_FORMAT = "%(asctime)s [%(threadName)-12.12s] %(levelname)-8s| %(module)s.%(funcName)s: %(message)s"
+    LOGGING_FORMAT = "%(asctime)s [%(threadName)-12.12s] %(levelname)-8s| %(name)s %(module)s.%(funcName)s: %(message)s"
     try:
         coloredlogs.install(fmt=LOGGING_FORMAT, level=logging_level)
     except NameError:

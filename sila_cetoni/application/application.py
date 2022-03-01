@@ -51,6 +51,7 @@ from .system import ApplicationSystem
 DEFAULT_BASE_PORT = 50051
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+logger = logging.getLogger(__name__)
 
 
 class Application(metaclass=Singleton):
@@ -78,11 +79,11 @@ class Application(metaclass=Singleton):
         """
         self.system.start()
 
-        logging.debug("Creating SiLA 2 servers...")
+        logger.debug("Creating SiLA 2 servers...")
         self.servers = self.create_servers()
 
         if not self.servers:
-            logging.info("No SiLA Servers to run")
+            logger.info("No SiLA Servers to run")
             return
 
         try:
@@ -107,7 +108,7 @@ class Application(metaclass=Singleton):
         """
         Starts all SiLA 2 servers
         """
-        logging.debug("Starting SiLA 2 servers...")
+        logger.debug("Starting SiLA 2 servers...")
         port = self.base_port
         for server in self.servers:
             try:
@@ -116,16 +117,16 @@ class Application(metaclass=Singleton):
                 logger.error(str(err))
                 self.stop()
             port += 1
-        logging.info("All servers started!")
+        logger.info("All servers started!")
 
     def stop_servers(self):
         """
         Stops all SiLA 2 servers
         """
-        logging.debug("Shutting down servers...")
+        logger.debug("Shutting down servers...")
         for server in self.servers:
             server.stop()
-        logging.info("Done!")
+        logger.info("Done!")
 
     def create_servers(self):
         """

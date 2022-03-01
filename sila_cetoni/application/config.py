@@ -5,6 +5,8 @@ import uuid
 from configparser import ConfigParser
 from typing import Dict, Optional
 
+logger = logging.getLogger(__name__)
+
 
 class Config:
     """
@@ -24,7 +26,7 @@ class Config:
         self.__config_path = os.path.join(self.__config_dir(subdir), name + ".ini")
         self.__parser = ConfigParser()
         if not self.__parser.read(self.__config_path):
-            logging.warning(f"Could not read config file! Creating a new one ({self.__config_path})")
+            logger.warning(f"Could not read config file! Creating a new one ({self.__config_path})")
             self.__add_default_values()
             self.write()
 
@@ -87,5 +89,5 @@ class Config:
 
     @axis_position_counters.setter
     def axis_position_counters(self, position_counters: Dict[str, int]):
-        logging.info(position_counters)
+        logger.info(position_counters)
         self.__parser["axis_position_counters"] = position_counters

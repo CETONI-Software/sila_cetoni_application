@@ -36,6 +36,8 @@ from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion
 
 from sila_cetoni.balance.device_drivers import BalanceInterface
 
+logger = logging.getLogger(__name__)
+
 
 class Device:
     """
@@ -195,7 +197,7 @@ class DeviceConfiguration:
 
         :param config_path: Path to a valid device configuration
         """
-        logging.debug(f"Parsing device configuration {path}")
+        logger.debug(f"Parsing device configuration {path}")
         self.path = path
         self.devices = []
 
@@ -228,7 +230,7 @@ class DeviceConfiguration:
         filtered_devices = [device for device in filter(self.__unneeded_devices, self.devices)]
         self.devices = [device for device in map(self.__fix_device_name, filtered_devices)]
 
-        logging.debug(f"Found the following devices: {self.devices}")
+        logger.debug(f"Found the following devices: {self.devices}")
 
         try:
             self.has_battery = bool(root.SiLA.BatteryPowered)
@@ -241,7 +243,7 @@ class DeviceConfiguration:
 
         :param plugin_name: The name of the plugin to parse
         """
-        logging.debug(f"Parsing configuration for {plugin_name} plugin")
+        logger.debug(f"Parsing configuration for {plugin_name} plugin")
         # we need to create a new parser that parses our 'broken' XML files
         # (they are regarded as 'broken' because they contain multiple root tags)
         parser = objectify.makeparser(recover=True)
@@ -324,7 +326,7 @@ class DeviceConfiguration:
             channel_name = channel.get_name()
             for device in self.devices:
                 if device.name.rsplit("_Pump", 1)[0] in channel_name:
-                    logging.debug(f"Channel {channel_name} belongs to device {device}")
+                    logger.debug(f"Channel {channel_name} belongs to device {device}")
                     if isinstance(channel, qmixcontroller.ControllerChannel):
                         device.controller_channels += [channel]
                         if type(device) == Device:
