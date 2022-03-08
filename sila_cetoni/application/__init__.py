@@ -24,11 +24,6 @@ else:
 
     try:
         import qmixsdk
-
-        # If we were called via `sila-cetoni <args>` we get an ImportError in the sila-cetoni script saying that 'main'
-        # cannot be imported from 'sila_cetoni.application'. I don't exactly know why, but importing it here seems to
-        # fix this error.
-        from .__main__ import main
     except (ModuleNotFoundError, ImportError):
         # setup the environment for python to find the SDK and for ctypes to load the shared libs properly
         env = os.environ.copy()
