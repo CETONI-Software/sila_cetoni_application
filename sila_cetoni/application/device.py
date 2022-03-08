@@ -24,18 +24,21 @@ ________________________________________________________________________
 ________________________________________________________________________
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import re
-from typing import Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from lxml import etree, objectify
 
 # import qmixsdk
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
-from sila_cetoni.balance.device_drivers import BalanceInterface
-from sila_cetoni.lcms.device_drivers import LCMSInterface
+if TYPE_CHECKING:
+    from sila_cetoni.balance.device_drivers import BalanceInterface
+    from sila_cetoni.lcms.device_drivers import LCMSInterface
 
 logger = logging.getLogger(__name__)
 

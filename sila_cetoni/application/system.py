@@ -35,9 +35,6 @@ from typing import List, Optional
 # import qmixsdk
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
-from sila_cetoni.balance.device_drivers import sartorius_balance
-from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
-
 from . import CETONI_SDK_PATH
 from .config import Config
 from .device import (
@@ -443,6 +440,12 @@ class ApplicationSystem(metaclass=Singleton):
         :return: A list of all balance devices
         """
 
+        try:
+            from sila_cetoni.balance.device_drivers import sartorius_balance
+        except (ModuleNotFoundError, ImportError):
+            logger.info("Could not find sila_cetoni.balance package - no support for balance devices!")
+            return []
+
         # for now we assume that at most one balance is connected until we get
         # proper balance support in the SDK
         balance_count = 1
@@ -478,6 +481,12 @@ class ApplicationSystem(metaclass=Singleton):
 
         :note: We currently only support a single LC/MS device
         """
+
+        try:
+            from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
+        except (ModuleNotFoundError, ImportError):
+            logger.info("Could not find sila_cetoni.lcms package - no support for LC/MS devices!")
+            return None
 
         logger.debug("Looking for LC/MS")
 
