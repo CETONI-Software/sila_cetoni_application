@@ -31,7 +31,6 @@ import sys
 import time
 from typing import List
 
-from OpenSSL import crypto
 from sila2.server import SilaServer
 
 from . import CETONI_SDK_PATH
