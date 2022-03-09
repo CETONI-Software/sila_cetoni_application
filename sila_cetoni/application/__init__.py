@@ -30,6 +30,8 @@ else:
         env["PATH"] = f"{CETONI_SDK_PATH}:{env['PATH']}"
         env["PYTHONPATH"] = f"{CETONI_SDK_PATH}/python:{env.get('PYTHONPATH', '')}"
         env["LD_LIBRARY_PATH"] = f"{CETONI_SDK_PATH}/lib:{env.get('LD_LIBRARY_PATH', '')}"
+        # uncomment the following line if you get an error like 'undefined symbol: __atomic_exchange_8'
+        # env["LD_PRELOAD"] = "/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0"
         # print(env)
 
         if sys.argv[0] == "-m":
