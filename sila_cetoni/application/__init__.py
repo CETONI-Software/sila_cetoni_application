@@ -13,14 +13,12 @@ else:
         CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK_Raspi")
         print(f"Running on RaspberryPi - setting SDK path to {CETONI_SDK_PATH}")
     except (ModuleNotFoundError, ImportError):
-        pass
-
-    if "Ubuntu" in os.uname().version:
-        CETONI_SDK_PATH = os.path.join("/usr", "share", "qmix-sdk")
-        print(f"Running on Ubuntu Linux - setting SDK path to {CETONI_SDK_PATH}")
-    else:
-        CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK")
-        print(f"Running on generic Linux - setting SDK path to {CETONI_SDK_PATH}")
+        if "Ubuntu" in os.uname().version:
+            CETONI_SDK_PATH = os.path.join("/usr", "share", "qmix-sdk")
+            print(f"Running on Ubuntu Linux - setting SDK path to {CETONI_SDK_PATH}")
+        else:
+            CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK")
+            print(f"Running on generic Linux - setting SDK path to {CETONI_SDK_PATH}")
 
     try:
         import qmixsdk
