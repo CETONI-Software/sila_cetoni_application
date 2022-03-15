@@ -83,6 +83,7 @@ class Application(metaclass=Singleton):
 
         if not self.servers:
             logger.info("No SiLA Servers to run")
+            self.system.stop()
             return
 
         try:
