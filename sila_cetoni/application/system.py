@@ -255,7 +255,7 @@ class ApplicationSystem(metaclass=Singleton):
                     device.set_operational()
                     if isinstance(device, PumpDevice):
                         drive_pos_counter = Config(device.name).pump_drive_position_counter
-                        if drive_pos_counter is not None:
+                        if drive_pos_counter is not None and not device.is_position_sensing_initialized():
                             logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
                             device.restore_position_counter_value(drive_pos_counter)
 
