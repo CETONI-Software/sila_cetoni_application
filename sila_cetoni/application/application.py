@@ -33,7 +33,7 @@ from typing import List
 
 from sila2.server import SilaServer
 
-from . import CETONI_SDK_PATH
+from sila_cetoni.config import CETONI_SDK_PATH
 
 # adjust PATH variable to point to the SDK
 sys.path.append(CETONI_SDK_PATH)

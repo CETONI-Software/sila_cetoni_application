@@ -35,7 +35,8 @@ from typing import List, Optional
 # import qmixsdk
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
-from . import CETONI_SDK_PATH
+from sila_cetoni.config import CETONI_SDK_PATH
+
 from .config import Config
 from .device import (
     AxisSystemDevice,
