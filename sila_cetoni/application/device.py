@@ -115,6 +115,8 @@ class PumpDevice(qmixpump.Pump, Device):
     `Device` class
     """
 
+    is_peristaltic_pump: bool = False
+
     def __init__(self, name: str):
         super().__init__(name)
 
@@ -286,6 +288,11 @@ class DeviceConfiguration:
                     self.device_by_name(device.get("Name")).set_device_property(
                         "jib_length", abs(int(device.JibLength.text))
                     )
+            if "tubingpump" in plugin_name:
+                # no other way to identify a peristaltic pump
+                for device in plugin_root.labbCAN.DeviceList.iterchildren():
+                    setattr(self.device_by_name(device.get("Name")), "is_peristaltic_pump", True)
+
 
     @staticmethod
     def __unneeded_devices(device: Device):
@@ -298,7 +305,7 @@ class DeviceConfiguration:
         # Same goes for the individual valves of a Festo module. All valves of a
         # module are represented by a single server so we need to filter the
         # individual valve devices from the device list.
-        regexp = re.compile("(.*Epos.*)|(.*Valve\d?$)")
+        regexp = re.compile("(.*Epos.*)|(.*_SmcDrive$)|(.*Valve\d?$)")
         return regexp.match(device.name) is None
 
     @staticmethod

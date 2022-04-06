@@ -142,6 +142,12 @@ class Application(metaclass=Singleton):
         for pump in self.system.pumps:
             server_name = pump.name.replace("_", " ")
 
+            if pump.is_peristaltic_pump:
+                logger.warning(
+                    f"Cannot create SiLA 2 server for pump {pump.name} because peristaltic pumps are not yet supported!"
+                )
+                continue
+
             if isinstance(pump, qmixpump.ContiFlowPump):
                 from sila_cetoni.pumps.contiflowpumps.sila.contiflowpump_service.server import Server
 
