@@ -113,6 +113,7 @@ class Application(metaclass=Singleton):
         for server in self.servers:
             try:
                 server.start(LOCAL_IP, port)
+                logger.info(f"Starting SiLA 2 server {server.server_name!r} on {LOCAL_IP}:{port}")
             except RuntimeError as err:
                 logger.error(str(err))
                 self.stop()
