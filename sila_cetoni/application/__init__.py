@@ -8,26 +8,31 @@ _CETONI_SDK_PATH_KEY = "CETONI_SDK_PATH"
 
 if _CETONI_SDK_PATH_KEY in os.environ:
     config.CETONI_SDK_PATH = os.environ.get(_CETONI_SDK_PATH_KEY)
-    print(f"Using SDK path from environment variable - setting SDK path to {config.CETONI_SDK_PATH}")
-elif config.CETONI_SDK_PATH:
-    print(f"Setting SDK path to {config.CETONI_SDK_PATH}")
+    print(f"Using SDK path from environment variable - setting SDK path to '{config.CETONI_SDK_PATH}'")
+elif config.CETONI_SDK_PATH and os.path.exists(config.CETONI_SDK_PATH):
+    print(f"Setting SDK path to '{config.CETONI_SDK_PATH}'")
 else:
+    print(
+        f"Did not find SDK path in CETONI_SDK_PATH environment variable and the directory '{config.CETONI_SDK_PATH}' "
+        "from {config.__file__} does not exist."
+    )
+    print("Trying to autodetect SDK path... ", end="")
     if platform.system() == "Windows":
         config.CETONI_SDK_PATH = os.path.join("C:\\", "CETONI_SDK")
-        print(f"Running on Windows - setting SDK path to {config.CETONI_SDK_PATH}")
+        print(f"Running on Windows - setting SDK path to '{config.CETONI_SDK_PATH}'")
     else:
         try:
             import RPi.GPIO as gpio
 
             config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK_Raspi")
-            print(f"Running on RaspberryPi - setting SDK path to {config.CETONI_SDK_PATH}")
+            print(f"Running on RaspberryPi - setting SDK path to '{config.CETONI_SDK_PATH}'")
         except (ModuleNotFoundError, ImportError):
             if "Ubuntu" in os.uname().version:
                 config.CETONI_SDK_PATH = os.path.join("/usr", "share", "qmix-sdk")
-                print(f"Running on Ubuntu Linux - setting SDK path to {config.CETONI_SDK_PATH}")
+                print(f"Running on Ubuntu Linux - setting SDK path to '{config.CETONI_SDK_PATH}'")
             else:
                 config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK")
-                print(f"Running on generic Linux - setting SDK path to {config.CETONI_SDK_PATH}")
+                print(f"Running on generic Linux - setting SDK path to '{config.CETONI_SDK_PATH}'")
 
 if platform.system() != "Windows":
     try:
