@@ -293,7 +293,6 @@ class DeviceConfiguration:
                 for device in plugin_root.labbCAN.DeviceList.iterchildren():
                     setattr(self.device_by_name(device.get("Name")), "is_peristaltic_pump", True)
 
-
     @staticmethod
     def __unneeded_devices(device: Device):
         """

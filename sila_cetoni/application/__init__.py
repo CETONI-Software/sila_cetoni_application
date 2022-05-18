@@ -14,7 +14,7 @@ elif config.CETONI_SDK_PATH and os.path.exists(config.CETONI_SDK_PATH):
 else:
     print(
         f"Did not find SDK path in CETONI_SDK_PATH environment variable and the directory '{config.CETONI_SDK_PATH}' "
-        "from {config.__file__} does not exist."
+        f"from {config.__file__} does not exist."
     )
     print("Trying to autodetect SDK path... ", end="")
     if platform.system() == "Windows":
