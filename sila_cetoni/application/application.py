@@ -163,7 +163,7 @@ class Application(metaclass=Singleton):
 
                 server = Server(
                     pump=pump,
-                    valve=pump.valves[0],
+                    valve=pump.valves[0] if len(pump.valves) > 0 else None,
                     io_channels=pump.io_channels,
                     server_name=server_name,
                     server_type=server_type,
