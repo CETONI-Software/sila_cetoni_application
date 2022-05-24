@@ -265,7 +265,7 @@ class DeviceConfiguration:
         logger.debug(f"Parsing configuration for {plugin_name} plugin")
         # we need to create a new parser that parses our 'broken' XML files
         # (they are regarded as 'broken' because they contain multiple root tags)
-        parser = objectify.makeparser(recover=True)
+        parser: etree.XMLParser = objectify.makeparser(recover=True, remove_comments=True)
         with open(os.path.join(self.path, plugin_name + ".xml")) as f:
             # wrap the 'broken' XML in a new <root> so that we can parse the
             # whole document instead of just the first root
@@ -273,10 +273,13 @@ class DeviceConfiguration:
             fixed_xml = bytes(lines[0] + "<root>" + "".join(lines[1:]) + "</root>", "utf-8")
 
             plugin_tree: objectify.ObjectifiedElement = objectify.fromstring(fixed_xml, parser)
-            plugin_root = plugin_tree.Plugin
+            plugin_root: objectify.ObjectifiedElement = plugin_tree.Plugin
             try:
                 # a balance has no labbCAN device yet
-                device_list = plugin_root.DeviceList if plugin_name == "balance" else plugin_root.labbCAN.DeviceList
+                device_list: objectify.ObjectifiedElement = (
+                    plugin_root.DeviceList if plugin_name == "balance" else plugin_root.labbCAN.DeviceList
+                )
+                device: objectify.ObjectifiedElement  # only for typing
                 for device in device_list.iterchildren():
                     self.devices += [Device(device.get("Name"))]
             except AttributeError:
