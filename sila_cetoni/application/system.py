@@ -36,6 +36,8 @@ from typing import List, Optional
 from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
 
 from sila_cetoni.config import CETONI_SDK_PATH
+from sila_cetoni.core.device_drivers.abc import BatteryInterface
+from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
 
 from .config import Config
 from .device import (
@@ -82,6 +84,7 @@ class ApplicationSystem(metaclass=Singleton):
     bus: Optional[qmixbus.Bus] = None
     monitoring_thread: threading.Thread
 
+    battery: Optional[BatteryInterface] = None
     pumps: List[PumpDevice] = []
     axis_systems: List[AxisSystemDevice] = []
     valves: List[ValveDevice] = []
@@ -102,6 +105,10 @@ class ApplicationSystem(metaclass=Singleton):
 
             self.bus = qmixbus.Bus()
             self.open_bus()
+
+            if self.device_config.has_battery:
+                # we don't have any other specific battery drivers yet
+                self.battery = MobDosBattery()
 
             # The order is important here! Many devices have I/O channels but are not
             # pure I/O devices (similarly, pumps might have a valve but they're not a
@@ -141,6 +148,8 @@ class ApplicationSystem(metaclass=Singleton):
         """
         logger.debug("Stopping application system...")
         self.state = SystemState.SHUTDOWN
+        if self.battery is not None:
+            self.battery.stop()
         if self.bus is not None:
             self.stop_and_close_bus()
         if self.lcms is not None:

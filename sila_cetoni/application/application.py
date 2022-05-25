@@ -165,6 +165,7 @@ class Application(metaclass=Singleton):
                     pump=pump,
                     valve=pump.valves[0] if len(pump.valves) > 0 else None,
                     io_channels=pump.io_channels,
+                    battery=self.system.battery,
                     server_name=server_name,
                     server_type=server_type,
                     server_uuid=Config(pump.name).server_uuid,
