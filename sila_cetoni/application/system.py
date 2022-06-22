@@ -98,7 +98,7 @@ class ApplicationSystem(metaclass=Singleton):
     MAX_SECONDS_WITHOUT_BATTERY = 20
 
     def __init__(self, device_config_path: str = ""):
-        logger.debug("Looking up devices...")
+        logger.info("Looking up devices...")
 
         if device_config_path:
             self.device_config = DeviceConfiguration(device_config_path)
@@ -146,7 +146,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Stops the CAN bus monitoring and the bus communication
         """
-        logger.debug("Stopping application system...")
+        logger.info("Stopping application system...")
         self.state = SystemState.SHUTDOWN
         if self.battery is not None:
             self.battery.stop()
@@ -160,7 +160,7 @@ class ApplicationSystem(metaclass=Singleton):
         Shuts down the operating system if we are battery powered
         """
         if self.device_config.has_battery:
-            logger.debug("Shutting down...")
+            logger.info("Shutting down...")
             os.system("sudo shutdown now")
 
     def _start_bus_monitoring(self):
@@ -178,7 +178,7 @@ class ApplicationSystem(metaclass=Singleton):
 
             :param exit: Whether to call `sys.exit` if opening fails or just pass on the error that ocurred
         """
-        logger.debug("Opening bus...")
+        logger.info("Opening bus...")
         try:
             # If we're executed through python.exe the application dir is the
             # directory where python.exe is located. In order for the SDK to find
@@ -196,7 +196,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Starts the bus communication and enables all devices
         """
-        logger.debug("Starting bus and enabling devices...")
+        logger.info("Starting bus and enabling devices...")
         self.bus.start()
         self.enable_pumps()
         self.enable_axis_systems()
@@ -205,7 +205,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Stops and closes the bus communication
         """
-        logger.debug("Closing bus...")
+        logger.info("Closing bus...")
         if self.state.is_operational():
             self.bus.stop()
         self.bus.close()
