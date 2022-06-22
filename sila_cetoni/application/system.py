@@ -157,10 +157,8 @@ class ApplicationSystem(metaclass=Singleton):
 
     def shutdown(self):
         """
-        Stops the application and shuts down the operating system if we are
-        battery powered otherwise it only stops the application
+        Shuts down the operating system if we are battery powered
         """
-        self.stop()
         if self.device_config.has_battery:
             logger.debug("Shutting down...")
             os.system("sudo shutdown now")
@@ -169,14 +167,16 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Starts monitoring the CAN bus for events (esp. emergency and error events)
         """
-        self.monitoring_thread = threading.Thread(target=self.monitor_events)
+        self.monitoring_thread = threading.Thread(target=self.monitor_events, name="BusMonitoringThread")
         self.monitoring_thread.start()
 
     # -------------------------------------------------------------------------
     # Bus
-    def open_bus(self):
+    def open_bus(self, exit: bool = True):
         """
         Opens the given device config and starts the bus communication
+
+            :param exit: Whether to call `sys.exit` if opening fails or just pass on the error that ocurred
         """
         logger.debug("Opening bus...")
         try:
@@ -187,7 +187,10 @@ class ApplicationSystem(metaclass=Singleton):
             self.bus.open(self.device_config.path, os.path.join(CETONI_SDK_PATH, "plugins", "labbcan"))
         except qmixbus.DeviceError as err:
             logger.error("Could not open the bus communication: %s", err)
-            sys.exit(1)
+            if exit:
+                sys.exit(1)
+            else:
+                raise err
 
     def start_bus_and_enable_devices(self):
         """
@@ -203,7 +206,8 @@ class ApplicationSystem(metaclass=Singleton):
         Stops and closes the bus communication
         """
         logger.debug("Closing bus...")
-        self.bus.stop()
+        if self.state.is_operational():
+            self.bus.stop()
         self.bus.close()
 
     def monitor_events(self):
@@ -240,28 +244,31 @@ class ApplicationSystem(metaclass=Singleton):
             time.sleep(1)
 
             event = self.bus.read_event()
-            if not event.is_valid():
-                continue
-            logger.debug(
-                f"event id: {event.event_id}, device: {event.device}, " f"data: {event.data}, message: {event.string}"
-            )
+            if event.is_valid():
+                logger.debug(
+                    f"event id: {event.event_id}, device handle: {event.device.handle}, "
+                    f"node id: {event.device.get_node_id()}, data: {event.data}, message: {event.string}"
+                )
 
-            if self.state.is_operational() and (
-                is_dc_link_under_voltage_event(event) or is_heartbeat_err_occurred_event(event)
-            ):
-                self.state = SystemState.STOPPED
-                logger.debug("System entered 'Stopped' state")
+                if self.state.is_operational() and is_dc_link_under_voltage_event(event):
+                    self.state = SystemState.STOPPED
+                    logger.info("System entered 'Stopped' state")
+                    time.sleep(1)  # wait for the Atmel to catch up and detect the missing battery/external power
+                    continue
 
-            if self.device_config.has_battery and self.state.is_stopped():
+            if self.state.is_stopped() and self.battery is not None and not self.battery.is_secondary_source_connected:
                 seconds_stopped += 1
+                if seconds_stopped > self.MAX_SECONDS_WITHOUT_BATTERY:
+                    logger.info("Shutting down because battery has been removed for too long")
+                    self.shutdown()
 
-            if seconds_stopped > self.MAX_SECONDS_WITHOUT_BATTERY:
-                self.shutdown()
-
+            logger.debug(f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}, bat conn: {self.battery.is_connected}, ext conn {self.battery.is_secondary_source_connected}")
             if self.state.is_stopped() and is_heartbeat_err_resolved_event(event):
                 self.state = SystemState.OPERATIONAL
-                logger.debug("System entered 'Operational' state")
+                logger.info("System entered 'Operational' state")
+                seconds_stopped = 0
                 for device in self.device_config.devices:
+                    logger.debug(f"Setting device {device} operational")
                     device.set_operational()
                     if isinstance(device, PumpDevice):
                         drive_pos_counter = Config(device.name).pump_drive_position_counter

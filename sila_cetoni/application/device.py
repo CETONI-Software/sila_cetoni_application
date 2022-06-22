@@ -124,7 +124,9 @@ class PumpDevice(qmixpump.Pump, Device):
         super().set_operational()
         self.set_communication_state(qmixbus.CommState.operational)
         self.clear_fault()
-        self.enable(True)
+        self.enable(False)
+        while not self.is_enabled():
+            self.enable(True)
 
 
 class AxisSystemDevice(qmixmotion.AxisSystem, Device):

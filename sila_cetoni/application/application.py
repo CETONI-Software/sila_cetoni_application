@@ -49,7 +49,6 @@ from .system import ApplicationSystem
 
 DEFAULT_BASE_PORT = 50051
 
-_ONE_DAY_IN_SECONDS = 60 * 60 * 24
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +89,7 @@ class Application(metaclass=Singleton):
             self.start_servers()
             print("Press Ctrl-C to stop...", flush=True)
             while not self.system.state.shutting_down():
-                time.sleep(_ONE_DAY_IN_SECONDS)
+                time.sleep(1)
         except KeyboardInterrupt:
             print()
             self.stop()
