@@ -5,8 +5,14 @@ import uuid
 from configparser import ConfigParser
 from typing import Dict, Optional
 
+from sila2.server.encryption import generate_self_signed_certificate
+
+from .local_ip import LOCAL_IP
+
 logger = logging.getLogger(__name__)
 
+
+VERSION = 1
 
 class Config:
     """
@@ -25,10 +31,23 @@ class Config:
         """
         self.__config_path = os.path.join(self.__config_dir(subdir), name + ".ini")
         self.__parser = ConfigParser()
-        if not self.__parser.read(self.__config_path):
+        file_exists = self.__parser.read(self.__config_path)
+
+        version = self.__parser.getint("meta", "version", fallback=0)
+        # update version
+        self.__parser["meta"] = {}
+        self.__parser["meta"]["version"] = str(VERSION)
+
+        if not file_exists:
             logger.warning(f"Could not read config file! Creating a new one ({self.__config_path})")
             self.__add_default_values()
-            self.write()
+
+        if version < 1:
+            self.__add_default_values_v1()
+        # if version < 2:
+        #     self.__add_default_values_v2()
+        self.write()
+
 
     @staticmethod
     def __config_dir(subdir: str = "") -> str:
@@ -49,6 +68,15 @@ class Config:
         self.__parser["pump"] = {}
         self.__parser["axis_position_counters"] = {}
 
+    def __add_default_values_v1(self):
+        """
+        Sets all necessary entries to default values for version 1 of the config file
+        """
+        logger.info("Generating self-signed certificate")
+        private_key, cert_chain = generate_self_signed_certificate(self.__parser["server"]["uuid"], LOCAL_IP)
+        self.__parser["server"]["ssl_private_key"] = private_key.decode("utf-8")
+        self.__parser["server"]["ssl_certificate"] = cert_chain.decode("utf-8")
+
     def write(self):
         """
         Writes the current configuration to the file
@@ -63,6 +91,20 @@ class Config:
         The UUID of the SiLA Server as read from the config file
         """
         return self.__parser["server"].get("uuid")
+
+    @property
+    def ssl_private_key(self) -> Optional[bytes]:
+        """
+        The private key for the SSL certificate
+        """
+        return self.__parser["server"].get("ssl_private_key").encode("utf-8")
+
+    @property
+    def ssl_certificate(self) -> Optional[bytes]:
+        """
+        The SSL certificate
+        """
+        return self.__parser["server"].get("ssl_certificate").encode("utf-8")
 
     @property
     def pump_drive_position_counter(self) -> Optional[int]:
