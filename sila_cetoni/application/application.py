@@ -155,7 +155,7 @@ class Application(metaclass=Singleton):
                     pump=pump,
                     server_name=server_name,
                     server_type=server_type,
-                    server_uuid=Config(pump.name).server_uuid,
+                    server_uuid=Config(pump.name, self.system.device_config.name).server_uuid,
                 )
             else:
                 from sila_cetoni.pumps.syringepumps.sila.syringepump_service import Server
@@ -167,7 +167,7 @@ class Application(metaclass=Singleton):
                     battery=self.system.battery,
                     server_name=server_name,
                     server_type=server_type,
-                    server_uuid=Config(pump.name).server_uuid,
+                    server_uuid=Config(pump.name, self.system.device_config.name).server_uuid,
                 )
             servers += [server]
 
@@ -184,7 +184,7 @@ class Application(metaclass=Singleton):
                 device_properties=axis_system.properties,
                 server_name=server_name,
                 server_type=server_type,
-                server_uuid=Config(axis_system.name).server_uuid,
+                server_uuid=Config(axis_system.name, self.system.device_config.name).server_uuid,
             )
             servers += [server]
 
@@ -199,7 +199,7 @@ class Application(metaclass=Singleton):
                 valves=valve_device.valves,
                 server_name=server_name,
                 server_type=server_type,
-                server_uuid=Config(valve_device.name).server_uuid,
+                server_uuid=Config(valve_device.name, self.system.device_config.name).server_uuid,
             )
             servers += [server]
 
@@ -214,7 +214,7 @@ class Application(metaclass=Singleton):
                 controller_channels=controller_device.controller_channels,
                 server_name=server_name,
                 server_type=server_type,
-                server_uuid=Config(controller_device.name).server_uuid,
+                server_uuid=Config(controller_device.name, self.system.device_config.name).server_uuid,
             )
             servers += [server]
 
@@ -229,7 +229,7 @@ class Application(metaclass=Singleton):
                 io_channels=io_device.io_channels,
                 server_name=server_name,
                 server_type=server_type,
-                server_uuid=Config(io_device.name).server_uuid,
+                server_uuid=Config(io_device.name, self.system.device_config.name).server_uuid,
             )
             servers += [server]
 
@@ -244,7 +244,7 @@ class Application(metaclass=Singleton):
                 balance=balance.device,
                 server_name=server_name,
                 server_type=server_type,
-                server_uuid=Config(balance.name).server_uuid,
+                server_uuid=Config(balance.name, self.system.device_config.name).server_uuid,
             )
             servers += [server]
 
@@ -260,7 +260,7 @@ class Application(metaclass=Singleton):
                 lcms=lcms.device,
                 server_name=server_name,
                 server_type=server_type,
-                server_uuid=Config(lcms.name).server_uuid,
+                server_uuid=Config(lcms.name, self.system.device_config.name).server_uuid,
             )
             servers += [server]
 
