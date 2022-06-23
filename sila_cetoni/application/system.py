@@ -262,7 +262,15 @@ class ApplicationSystem(metaclass=Singleton):
                     logger.info("Shutting down because battery has been removed for too long")
                     self.shutdown()
 
-            logger.debug(f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}, bat conn: {self.battery.is_connected}, ext conn {self.battery.is_secondary_source_connected}")
+            if self.battery is not None:
+                logger.debug(
+                    f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}, bat conn: {self.battery.is_connected}, ext conn {self.battery.is_secondary_source_connected}"
+                )
+            else:
+                logger.debug(
+                    f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}"
+                )
+
             if self.state.is_stopped() and is_heartbeat_err_resolved_event(event):
                 self.state = SystemState.OPERATIONAL
                 logger.info("System entered 'Operational' state")
