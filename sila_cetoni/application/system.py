@@ -80,7 +80,7 @@ class ApplicationSystem(metaclass=Singleton):
     The whole application system containing all devices and all configuration
     """
 
-    device_config: DeviceConfiguration = None
+    device_config: DeviceConfiguration = DeviceConfiguration.EMPTY
     bus: Optional[qmixbus.Bus] = None
     monitoring_thread: threading.Thread
 

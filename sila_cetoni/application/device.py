@@ -207,9 +207,19 @@ class DeviceConfiguration:
     Provides means to parse the configuration from a given configuration folder
     """
 
+    EMPTY: DeviceConfiguration
+
     path: str
-    devices: List[Device]
-    has_battery: bool
+    name: str
+    devices: List[Device] = []
+    has_battery: bool = False
+
+    def __new__(cls, *args, **kwargs):
+        self = super().__new__(cls)
+        if not args and not kwargs:
+            self.path = ""
+            self.name = "empty"
+        return self
 
     def __init__(self, path: str):
         """
@@ -220,6 +230,7 @@ class DeviceConfiguration:
         """
         logger.debug(f"Parsing device configuration {path}")
         self.path = path
+        self.name = os.path.split(path)[1]
         self.devices = []
 
         self._parse()
@@ -366,3 +377,6 @@ class DeviceConfiguration:
                             IODevice.convert_to_class(device)
                             devices.add(device)
         return list(devices)
+
+
+DeviceConfiguration.EMPTY = DeviceConfiguration.__new__(DeviceConfiguration)
