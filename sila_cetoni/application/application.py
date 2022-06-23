@@ -111,7 +111,8 @@ class Application(metaclass=Singleton):
         port = self.base_port
         for server in self.servers:
             try:
-                server.start(LOCAL_IP, port)
+                config = Config(server.server_name.replace(" ", "_"), self.system.device_config.name)
+                server.start(LOCAL_IP, port, config.ssl_private_key, config.ssl_certificate)
                 logger.info(f"Starting SiLA 2 server {server.server_name!r} on {LOCAL_IP}:{port}")
             except RuntimeError as err:
                 logger.error(str(err))
