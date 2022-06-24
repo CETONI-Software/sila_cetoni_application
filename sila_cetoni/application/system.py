@@ -26,6 +26,7 @@ ________________________________________________________________________
 
 import logging
 import os
+from pathlib import Path
 import sys
 import threading
 import time
@@ -97,10 +98,10 @@ class ApplicationSystem(metaclass=Singleton):
 
     MAX_SECONDS_WITHOUT_BATTERY = 20
 
-    def __init__(self, device_config_path: str = ""):
+    def __init__(self, device_config_path: Optional[Path] = None):
         logger.info("Looking up devices...")
 
-        if device_config_path:
+        if device_config_path is not None:
             self.device_config = DeviceConfiguration(device_config_path)
 
             self.bus = qmixbus.Bus()
@@ -184,7 +185,7 @@ class ApplicationSystem(metaclass=Singleton):
             # directory where python.exe is located. In order for the SDK to find
             # all plugins, nonetheless, we need to give it it's expected plugin
             # path.
-            self.bus.open(self.device_config.path, os.path.join(CETONI_SDK_PATH, "plugins", "labbcan"))
+            self.bus.open(str(self.device_config.path), os.path.join(CETONI_SDK_PATH, "plugins", "labbcan"))
         except qmixbus.DeviceError as err:
             logger.error("Could not open the bus communication: %s", err)
             if exit:

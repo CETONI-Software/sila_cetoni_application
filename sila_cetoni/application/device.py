@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
@@ -209,7 +210,7 @@ class DeviceConfiguration:
 
     EMPTY: DeviceConfiguration
 
-    path: str
+    path: Path
     name: str
     devices: List[Device] = []
     has_battery: bool = False
@@ -221,7 +222,7 @@ class DeviceConfiguration:
             self.name = "empty"
         return self
 
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         """
         Parses the device configuration files located in the folder given by the
         `config_path` parameter.
@@ -230,7 +231,7 @@ class DeviceConfiguration:
         """
         logger.debug(f"Parsing device configuration {path}")
         self.path = path
-        self.name = os.path.split(path)[1]
+        self.name = path.name
         self.devices = []
 
         self._parse()

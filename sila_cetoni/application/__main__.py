@@ -1,6 +1,7 @@
 __version__ = "0.1.0"
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -45,10 +46,16 @@ def main(
         case_sensitive=False,
         formats=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     ),
-    config_path: str = typer.Option(
+    config_path: Optional[Path] = typer.Option(
         None,
         "--config_path",
         "-c",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+        allow_dash=False,
         metavar="CONFIG_PATH",
         help=(
             "Path to a valid CETONI device configuration folder (This is only necessary if you want to control CETONI "

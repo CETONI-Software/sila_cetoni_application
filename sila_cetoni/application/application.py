@@ -27,9 +27,10 @@ ________________________________________________________________________
 import argparse
 import logging
 import os
+from pathlib import Path
 import sys
 import time
-from typing import List
+from typing import List, Optional
 
 from sila2.server import SilaServer
 
@@ -62,7 +63,7 @@ class Application(metaclass=Singleton):
     base_port: int
     servers: List[SilaServer]
 
-    def __init__(self, device_config_path: str = "", base_port: int = DEFAULT_BASE_PORT):
+    def __init__(self, device_config_path: Optional[Path] = None, base_port: int = DEFAULT_BASE_PORT):
 
         self.system = ApplicationSystem(device_config_path)
 
