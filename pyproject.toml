@@ -21,6 +21,7 @@ dependencies = [
     "coloredlogs",
     "pyserial",
     "sila2[codegen]==0.8.0",
+    "typer"
 ]
 
 [project.optional-dependencies]
