@@ -6,6 +6,8 @@ from typing import Optional
 
 import typer
 
+from .local_ip import LOCAL_IP
+
 try:
     import coloredlogs
 except ModuleNotFoundError:
@@ -64,6 +66,9 @@ def main(
             "first.)"
         ),
     ),
+    server_ip: str = typer.Option(
+        LOCAL_IP, "--server-ip", "-i", metavar="IP", help="The IP address on which the servers should run"
+    ),
     server_base_port: int = typer.Option(
         DEFAULT_BASE_PORT, "--server-base-port", "-p", metavar="PORT", help="The port number for the first SiLA Server"
     ),
@@ -71,7 +76,7 @@ def main(
     """
     Launches as many SiLA 2 servers as there are CETONI devices in the configuration
     """
-    Application(config_path, server_base_port).run()
+    Application(config_path, server_ip, server_base_port).run()
 
 
 if __name__ == "__main__":

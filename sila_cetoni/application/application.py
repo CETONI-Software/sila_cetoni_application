@@ -60,13 +60,17 @@ class Application(metaclass=Singleton):
 
     system: ApplicationSystem
 
+    ip: str
     base_port: int
     servers: List[SilaServer]
 
-    def __init__(self, device_config_path: Optional[Path] = None, base_port: int = DEFAULT_BASE_PORT):
+    def __init__(
+        self, device_config_path: Optional[Path] = None, ip: str = LOCAL_IP, base_port: int = DEFAULT_BASE_PORT
+    ):
 
         self.system = ApplicationSystem(device_config_path)
 
+        self.ip = ip
         self.base_port = base_port
 
     def run(self):
@@ -113,7 +117,7 @@ class Application(metaclass=Singleton):
         for server in self.servers:
             try:
                 config = Config(server.server_name.replace(" ", "_"), self.system.device_config.name)
-                server.start(LOCAL_IP, port, config.ssl_private_key, config.ssl_certificate)
+                server.start(self.ip, port, config.ssl_private_key, config.ssl_certificate)
                 logger.info(f"Starting SiLA 2 server {server.server_name!r} on {LOCAL_IP}:{port}")
             except RuntimeError as err:
                 logger.error(str(err))
