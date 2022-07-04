@@ -210,7 +210,7 @@ class Application(metaclass=Singleton):
         for controller_device in self.system.controllers:
             server_name = controller_device.name.replace("_", " ")
 
-            from sila_cetoni.controllers.sila.control_loop_service.server import Server
+            from sila_cetoni.controllers.sila.controllers_service.server import Server
 
             server = Server(
                 controller_channels=controller_device.controller_channels,
