@@ -72,8 +72,17 @@ class Config:
         """
         Sets all necessary entries to default values for version 1 of the config file
         """
-        logger.info("Generating self-signed certificate")
-        private_key, cert_chain = generate_self_signed_certificate(self.__parser["server"]["uuid"], LOCAL_IP)
+        self.generate_self_signed_certificate()
+
+    def generate_self_signed_certificate(self, ip: str = LOCAL_IP):
+        """
+        Generates a self-signed certificate and a private key and stores that into the config file
+
+            :param ip: The IP address to store into the certificate
+        """
+        uuid = self.__parser["server"]["uuid"]
+        logger.info(f"Generating self-signed certificate for server {uuid}")
+        private_key, cert_chain = generate_self_signed_certificate(uuid, ip)
         self.__parser["server"]["ssl_private_key"] = private_key.decode("utf-8")
         self.__parser["server"]["ssl_certificate"] = cert_chain.decode("utf-8")
 

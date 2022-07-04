@@ -63,15 +63,21 @@ class Application(metaclass=Singleton):
     ip: str
     base_port: int
     servers: List[SilaServer]
+    regenerate_certificates: bool
 
     def __init__(
-        self, device_config_path: Optional[Path] = None, ip: str = LOCAL_IP, base_port: int = DEFAULT_BASE_PORT
+        self,
+        device_config_path: Optional[Path] = None,
+        ip: str = LOCAL_IP,
+        base_port: int = DEFAULT_BASE_PORT,
+        regenerate_certificates: bool = False,
     ):
 
         self.system = ApplicationSystem(device_config_path)
 
         self.ip = ip
         self.base_port = base_port
+        self.regenerate_certificates = regenerate_certificates
 
     def run(self):
         """
@@ -117,6 +123,8 @@ class Application(metaclass=Singleton):
         for server in self.servers:
             try:
                 config = Config(server.server_name.replace(" ", "_"), self.system.device_config.name)
+                if self.regenerate_certificates:
+                    config.generate_self_signed_certificate(self.ip)
                 server.start(self.ip, port, config.ssl_private_key, config.ssl_certificate)
                 logger.info(f"Starting SiLA 2 server {server.server_name!r} on {LOCAL_IP}:{port}")
             except RuntimeError as err:

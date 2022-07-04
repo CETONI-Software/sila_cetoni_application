@@ -72,11 +72,19 @@ def main(
     server_base_port: int = typer.Option(
         DEFAULT_BASE_PORT, "--server-base-port", "-p", metavar="PORT", help="The port number for the first SiLA Server"
     ),
+    regenerate_certificates: bool = typer.Option(
+        False,
+        "--regenerate-certificates/",
+        help=(
+            "Force regeneration of the self-signed certificates (e.g. if the IP address of the machine running the "
+            "servers changed)"
+        ),
+    ),
 ):
     """
     Launches as many SiLA 2 servers as there are CETONI devices in the configuration
     """
-    Application(config_path, server_ip, server_base_port).run()
+    Application(config_path, server_ip, server_base_port, regenerate_certificates).run()
 
 
 if __name__ == "__main__":
