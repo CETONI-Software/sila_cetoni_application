@@ -7,7 +7,7 @@ import sila_cetoni.config as config
 _CETONI_SDK_PATH_KEY = "CETONI_SDK_PATH"
 
 if _CETONI_SDK_PATH_KEY in os.environ:
-    config.CETONI_SDK_PATH = os.environ.get(_CETONI_SDK_PATH_KEY)
+    config.CETONI_SDK_PATH = os.path.expanduser(os.environ.get(_CETONI_SDK_PATH_KEY))
     print(f"Using SDK path from environment variable - setting SDK path to '{config.CETONI_SDK_PATH}'")
 elif config.CETONI_SDK_PATH and os.path.exists(config.CETONI_SDK_PATH):
     print(f"Setting SDK path to '{config.CETONI_SDK_PATH}'")
