@@ -18,6 +18,18 @@ Types of changes
 
 ## Unreleased
 
+### Added
+- `~` path constructs in the `CETONI_SDK_PATH` environment variable can now be properly expanded
+- Add CLI option to specify the IP address the servers should run on
+- Add CLI option to force regeneration of the self-signed certificates
+- New `HeatingCoolingDevice` device class for devices of sila_cetoni_heating_cooling
+
+### Changed
+- Bump sila2 to v0.8.2
+
+### Fixed
+- Fix dependencies in pyproject.toml
+- Catch possible `TimeoutError` when starting the servers
 
 ## v1.0.0
 
