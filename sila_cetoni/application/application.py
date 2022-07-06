@@ -128,7 +128,7 @@ class Application(metaclass=Singleton):
                     config.generate_self_signed_certificate(self.ip)
                 server.start(self.ip, port, config.ssl_private_key, config.ssl_certificate)
                 logger.info(f"Starting SiLA 2 server {server.server_name!r} on {LOCAL_IP}:{port}")
-            except RuntimeError as err:
+            except (RuntimeError, concurrent.futures.TimeoutError) as err:
                 logger.error(str(err))
                 self.stop()
             port += 1
