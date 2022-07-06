@@ -47,6 +47,7 @@ from .device import (
     ControllerDevice,
     Device,
     DeviceConfiguration,
+    HeatingCoolingDevice,
     IODevice,
     LCMSDevice,
     PumpDevice,
@@ -93,6 +94,7 @@ class ApplicationSystem(metaclass=Singleton):
     io_devices: List[IODevice] = []
     balances: List[BalanceDevice] = []
     lcms: Optional[LCMSDevice] = None
+    heating_cooling_devices: List[HeatingCoolingDevice] = []
 
     state: SystemState
 
@@ -124,6 +126,7 @@ class ApplicationSystem(metaclass=Singleton):
 
         self.balances = self.get_availabe_balances()
         self.lcms = self.get_availabe_lcms()
+        self.heating_cooling_devices = self.get_availabe_heating_cooling_devices()
 
         logger.debug(f"Pumps: {self.pumps!r}")
         logger.debug(f"axis: {self.axis_systems!r}")
@@ -132,6 +135,7 @@ class ApplicationSystem(metaclass=Singleton):
         logger.debug(f"io devices: {self.io_devices!r}")
         logger.debug(f"balance devices: {self.balances!r}")
         logger.debug(f"lcms: {self.lcms!r}")
+        logger.debug(f"heating/cooling devices: {self.heating_cooling_devices!r}")
 
         self.state = SystemState.OPERATIONAL
 
@@ -155,6 +159,8 @@ class ApplicationSystem(metaclass=Singleton):
             self.stop_and_close_bus()
         if self.lcms is not None:
             self.lcms.device.stop()
+        for device in self.heating_cooling_devices:
+            device.device.stop()
 
     def shutdown(self):
         """
@@ -177,7 +183,7 @@ class ApplicationSystem(metaclass=Singleton):
         """
         Opens the given device config and starts the bus communication
 
-            :param exit: Whether to call `sys.exit` if opening fails or just pass on the error that ocurred
+            :param exit: Whether to call `sys.exit` if opening fails or just pass on the error that occurred
         """
         logger.info("Opening bus...")
         try:
@@ -268,9 +274,7 @@ class ApplicationSystem(metaclass=Singleton):
                     f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}, bat conn: {self.battery.is_connected}, ext conn {self.battery.is_secondary_source_connected}"
                 )
             else:
-                logger.debug(
-                    f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}"
-                )
+                logger.debug(f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}")
 
             if self.state.is_stopped() and is_heartbeat_err_resolved_event(event):
                 self.state = SystemState.OPERATIONAL
@@ -523,3 +527,31 @@ class ApplicationSystem(metaclass=Singleton):
             return LCMSDevice(lcms.instrument_name, lcms)
         except shimadzu_lcms2020.LabSolutionsStartException:
             pass
+
+    # -------------------------------------------------------------------------
+    # Heating/Cooling
+    def get_availabe_heating_cooling_devices(self) -> List[BalanceDevice]:
+        """
+        Checks for possible heating/cooling devices and returns all found devices
+
+        :return: A list of all heating/cooling devices
+        """
+
+        try:
+            from sila_cetoni.heating_cooling.device_drivers import huber_chiller
+        except (ModuleNotFoundError, ImportError):
+            logger.info("Could not find sila_cetoni.heating_cooling package - no support for balance devices!")
+            return []
+
+        devices = []
+
+        dev = huber_chiller.HuberChiller()
+        try:
+            dev.open()
+        except huber_chiller.HuberChillerNotFoundException:
+            pass
+        # 'guess' the balance name for now
+        logger.debug("Found balance named %s", dev.name)
+        devices += [HeatingCoolingDevice(dev.name, dev)]
+
+        return devices

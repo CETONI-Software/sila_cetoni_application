@@ -285,4 +285,19 @@ class Application(metaclass=Singleton):
             )
             servers += [server]
 
+        # ---------------------------------------------------------------------
+        # heating_cooling
+        for heating_cooling_device in self.system.heating_cooling_devices:
+            server_name = heating_cooling_device.name.replace("_", " ")
+
+            from sila_cetoni.heating_cooling.sila.heating_cooling_service.server import Server
+
+            server = Server(
+                temp_controller=heating_cooling_device.device,
+                server_name=server_name,
+                server_type=server_type,
+                server_uuid=Config(heating_cooling_device.name, self.system.device_config.name).server_uuid,
+            )
+            servers += [server]
+
         return servers

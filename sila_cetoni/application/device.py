@@ -30,7 +30,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from lxml import etree, objectify
 
@@ -39,6 +39,7 @@ from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion
 
 if TYPE_CHECKING:
     from sila_cetoni.balance.device_drivers import BalanceInterface
+    from sila_cetoni.heating_cooling.device_drivers import TemperatureControllerInterface
     from sila_cetoni.lcms.device_drivers import LCMSInterface
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class Device:
     controller_channels: List[qmixcontroller.ControllerChannel]
     valves: List[qmixvalve.Valve]
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
         self.properties = {}
 
@@ -182,7 +183,7 @@ class BalanceDevice(Device):
 
     device: BalanceInterface
 
-    def __init__(self, name: str, device: BalanceInterface = None):
+    def __init__(self, name: str, device: Optional[BalanceInterface] = None):
         super().__init__(name)
 
         self.device = device
@@ -195,7 +196,20 @@ class LCMSDevice(Device):
 
     device: LCMSInterface
 
-    def __init__(self, name: str, device: LCMSInterface = None):
+    def __init__(self, name: str, device: Optional[LCMSInterface] = None):
+        super().__init__(name)
+
+        self.device = device
+
+
+class HeatingCoolingDevice(Device):
+    """
+    Simple class to represent a heating/cooling device
+    """
+
+    device: TemperatureControllerInterface
+
+    def __init__(self, name: str, device: Optional[TemperatureControllerInterface] = None):
         super().__init__(name)
 
         self.device = device
