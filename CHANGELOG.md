@@ -18,6 +18,9 @@ Types of changes
 
 ## Unreleased
 
+
+## v1.1.0
+
 ### Added
 - `~` path constructs in the `CETONI_SDK_PATH` environment variable can now be properly expanded
 - Add CLI option to specify the IP address the servers should run on
