@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 VERSION = 1
 
+
 class Config:
     """
     Helper class to read and write a persistent configuration file
@@ -47,7 +48,6 @@ class Config:
         # if version < 2:
         #     self.__add_default_values_v2()
         self.write()
-
 
     @staticmethod
     def __config_dir(subdir: str = "") -> str:

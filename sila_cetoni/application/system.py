@@ -26,11 +26,11 @@ ________________________________________________________________________
 
 import logging
 import os
-from pathlib import Path
 import sys
 import threading
 import time
 from enum import Enum
+from pathlib import Path
 from typing import List, Optional
 
 # import qmixsdk
