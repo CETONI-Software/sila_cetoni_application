@@ -540,7 +540,7 @@ class ApplicationSystem(metaclass=Singleton):
         try:
             from sila_cetoni.heating_cooling.device_drivers import huber_chiller
         except (ModuleNotFoundError, ImportError):
-            logger.info("Could not find sila_cetoni.heating_cooling package - no support for balance devices!")
+            logger.info("Could not find sila_cetoni.heating_cooling package - no support for heating/cooling devices!")
             return []
 
         devices = []
@@ -548,10 +548,9 @@ class ApplicationSystem(metaclass=Singleton):
         dev = huber_chiller.HuberChiller()
         try:
             dev.open()
+            logger.debug("Found heating/cooling device named %s", dev.name)
+            devices += [HeatingCoolingDevice(dev.name, dev)]
         except huber_chiller.HuberChillerNotFoundException:
             pass
-        # 'guess' the balance name for now
-        logger.debug("Found balance named %s", dev.name)
-        devices += [HeatingCoolingDevice(dev.name, dev)]
 
         return devices
