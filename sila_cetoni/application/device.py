@@ -34,8 +34,12 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from lxml import etree, objectify
 
-# import qmixsdk
-from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+CETONI_SDK_IMPORTED = True
+try:
+    # import qmixsdk
+    from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+except (ModuleNotFoundError, ImportError):
+    CETONI_SDK_IMPORTED = False
 
 if TYPE_CHECKING:
     from sila_cetoni.balance.device_drivers import BalanceInterface
@@ -110,70 +114,71 @@ class Device:
         for name, value in kwargs.items():
             obj.__setattr__(name, value)
 
+if CETONI_SDK_IMPORTED:
 
-class PumpDevice(qmixpump.Pump, Device):
-    """
-    Simple wrapper around `qmixpump.Pump` with additional information from the
-    `Device` class
-    """
+    class PumpDevice(qmixpump.Pump, Device):
+        """
+        Simple wrapper around `qmixpump.Pump` with additional information from the
+        `Device` class
+        """
 
-    is_peristaltic_pump: bool = False
+        is_peristaltic_pump: bool = False
 
-    def __init__(self, name: str):
-        super().__init__(name)
+        def __init__(self, name: str):
+            super().__init__(name)
 
-    def set_operational(self):
-        super().set_operational()
-        self.set_communication_state(qmixbus.CommState.operational)
-        self.clear_fault()
-        self.enable(False)
-        while not self.is_enabled():
+        def set_operational(self):
+            super().set_operational()
+            self.set_communication_state(qmixbus.CommState.operational)
+            self.clear_fault()
+            self.enable(False)
+            while not self.is_enabled():
+                self.enable(True)
+
+
+    class AxisSystemDevice(qmixmotion.AxisSystem, Device):
+        """
+        Simple wrapper around `qmixmotion.AxisSystem` with additional information
+        from the `Device` class
+        """
+
+        def __init__(self, name: str):
+            super().__init__(name)
+
+        def set_operational(self):
+            super().set_operational()
+            self.set_communication_state(qmixbus.CommState.operational)
             self.enable(True)
 
 
-class AxisSystemDevice(qmixmotion.AxisSystem, Device):
-    """
-    Simple wrapper around `qmixmotion.AxisSystem` with additional information
-    from the `Device` class
-    """
+    class ValveDevice(Device):
+        """
+        Simple class to represent a valve device that has an arbitrary number of
+        valves (inherited from the `Device` class)
+        """
 
-    def __init__(self, name: str):
-        super().__init__(name)
-
-    def set_operational(self):
-        super().set_operational()
-        self.set_communication_state(qmixbus.CommState.operational)
-        self.enable(True)
+        def __init__(self, name: str):
+            super().__init__(name)
 
 
-class ValveDevice(Device):
-    """
-    Simple class to represent a valve device that has an arbitrary number of
-    valves (inherited from the `Device` class)
-    """
+    class ControllerDevice(Device):
+        """
+        Simple class to represent a controller device that has an arbitrary number of
+        controller channels (inherited from the `Device` class)
+        """
 
-    def __init__(self, name: str):
-        super().__init__(name)
-
-
-class ControllerDevice(Device):
-    """
-    Simple class to represent a controller device that has an arbitrary number of
-    controller channels (inherited from the `Device` class)
-    """
-
-    def __init__(self, name: str):
-        super().__init__(name)
+        def __init__(self, name: str):
+            super().__init__(name)
 
 
-class IODevice(Device):
-    """
-    Simple class to represent an I/O device that has an arbitrary number of analog
-    and digital I/O channels (inherited from the `Device` class)
-    """
+    class IODevice(Device):
+        """
+        Simple class to represent an I/O device that has an arbitrary number of analog
+        and digital I/O channels (inherited from the `Device` class)
+        """
 
-    def __init__(self, name: str):
-        super().__init__(name)
+        def __init__(self, name: str):
+            super().__init__(name)
 
 
 class BalanceDevice(Device):

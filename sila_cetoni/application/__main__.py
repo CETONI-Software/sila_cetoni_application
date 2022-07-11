@@ -80,6 +80,11 @@ def main(
             "servers changed)"
         ),
     ),
+    exec: bool = typer.Option(
+        True,
+        hidden=True,
+        help="Used by __init__ to indicate if the application shall be re-executed after setting the necessary environment variables",
+    ),
 ):
     """
     Launches as many SiLA 2 servers as there are CETONI devices in the configuration

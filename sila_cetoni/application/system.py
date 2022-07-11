@@ -24,6 +24,8 @@ ________________________________________________________________________
 ________________________________________________________________________
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
@@ -34,25 +36,25 @@ from pathlib import Path
 from typing import List, Optional
 
 # import qmixsdk
-from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+try:
+    from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+
+    from .device import (
+        AxisSystemDevice,
+        ControllerDevice,
+        IODevice,
+        PumpDevice,
+        ValveDevice,
+    )
+except (ModuleNotFoundError, ImportError):
+    pass
 
 from sila_cetoni.config import CETONI_SDK_PATH
 from sila_cetoni.core.device_drivers.abc import BatteryInterface
 from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
 
 from .config import Config
-from .device import (
-    AxisSystemDevice,
-    BalanceDevice,
-    ControllerDevice,
-    Device,
-    DeviceConfiguration,
-    HeatingCoolingDevice,
-    IODevice,
-    LCMSDevice,
-    PumpDevice,
-    ValveDevice,
-)
+from .device import Device,DeviceConfiguration, BalanceDevice, HeatingCoolingDevice, LCMSDevice
 from .singleton import Singleton
 
 logger = logging.getLogger(__name__)
@@ -530,7 +532,7 @@ class ApplicationSystem(metaclass=Singleton):
 
     # -------------------------------------------------------------------------
     # Heating/Cooling
-    def get_availabe_heating_cooling_devices(self) -> List[BalanceDevice]:
+    def get_availabe_heating_cooling_devices(self) -> List[HeatingCoolingDevice]:
         """
         Checks for possible heating/cooling devices and returns all found devices
 

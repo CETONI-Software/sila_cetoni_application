@@ -24,6 +24,8 @@ ________________________________________________________________________
 ________________________________________________________________________
 """
 
+from __future__ import annotations
+
 import argparse
 import concurrent.futures
 import logging
@@ -41,8 +43,10 @@ from sila_cetoni.config import CETONI_SDK_PATH
 sys.path.append(CETONI_SDK_PATH)
 sys.path.append(os.path.join(CETONI_SDK_PATH, "lib", "python"))
 
-# only used for type hinting
-from qmixsdk import qmixpump
+try:
+    from qmixsdk import qmixpump
+except (ModuleNotFoundError, ImportError):
+    pass
 
 from .config import Config
 from .local_ip import LOCAL_IP
