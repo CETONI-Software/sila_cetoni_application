@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from sila_cetoni.balance.device_drivers import BalanceInterface
     from sila_cetoni.heating_cooling.device_drivers import TemperatureControllerInterface
     from sila_cetoni.lcms.device_drivers import LCMSInterface
+    from sila_cetoni.purification.device_drivers import PurificationDeviceInterface
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,19 @@ class HeatingCoolingDevice(Device):
     device: TemperatureControllerInterface
 
     def __init__(self, name: str, device: Optional[TemperatureControllerInterface] = None):
+        super().__init__(name)
+
+        self.device = device
+
+
+class PurificationDevice(Device):
+    """
+    Simple class to represent a purification device
+    """
+
+    device: PurificationDeviceInterface
+
+    def __init__(self, name: str, device: Optional[PurificationDeviceInterface] = None):
         super().__init__(name)
 
         self.device = device

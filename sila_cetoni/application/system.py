@@ -54,7 +54,7 @@ from sila_cetoni.core.device_drivers.abc import BatteryInterface
 from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
 
 from .config import Config
-from .device import Device,DeviceConfiguration, BalanceDevice, HeatingCoolingDevice, LCMSDevice
+from .device import Device,DeviceConfiguration, BalanceDevice, HeatingCoolingDevice, LCMSDevice, PurificationDevice
 from .singleton import Singleton
 
 logger = logging.getLogger(__name__)
@@ -97,6 +97,7 @@ class ApplicationSystem(metaclass=Singleton):
     balances: List[BalanceDevice] = []
     lcms: Optional[LCMSDevice] = None
     heating_cooling_devices: List[HeatingCoolingDevice] = []
+    purification_devices: List[PurificationDevice] = []
 
     state: SystemState
 
@@ -129,6 +130,7 @@ class ApplicationSystem(metaclass=Singleton):
         self.balances = self.get_availabe_balances()
         self.lcms = self.get_availabe_lcms()
         self.heating_cooling_devices = self.get_availabe_heating_cooling_devices()
+        self.purification_devices = self.get_availabe_purification_devices()
 
         logger.debug(f"Pumps: {self.pumps!r}")
         logger.debug(f"axis: {self.axis_systems!r}")
@@ -138,6 +140,7 @@ class ApplicationSystem(metaclass=Singleton):
         logger.debug(f"balance devices: {self.balances!r}")
         logger.debug(f"lcms: {self.lcms!r}")
         logger.debug(f"heating/cooling devices: {self.heating_cooling_devices!r}")
+        logger.debug(f"purification devices: {self.purification_devices!r}")
 
         self.state = SystemState.OPERATIONAL
 
@@ -161,7 +164,7 @@ class ApplicationSystem(metaclass=Singleton):
             self.stop_and_close_bus()
         if self.lcms is not None:
             self.lcms.device.stop()
-        for device in self.heating_cooling_devices:
+        for device in self.heating_cooling_devices + self.purification_devices:
             device.device.stop()
 
     def shutdown(self):
@@ -553,6 +556,32 @@ class ApplicationSystem(metaclass=Singleton):
             logger.debug("Found heating/cooling device named %s", dev.name)
             devices += [HeatingCoolingDevice(dev.name, dev)]
         except huber_chiller.HuberChillerNotFoundException:
+            pass
+
+        return devices
+
+    # -------------------------------------------------------------------------
+    # Purification
+    def get_availabe_purification_devices(self) -> List[PurificationDevice]:
+        """
+        Checks for possible purification devices and returns all found devices
+
+        :return: A list of all purification devices
+        """
+
+        try:
+            from sila_cetoni.purification.device_drivers import sartorius_arium
+        except (ModuleNotFoundError, ImportError):
+            logger.info("Could not find sila_cetoni.purification package - no support for purification devices!")
+            return []
+
+        devices = []
+
+        try:
+            dev = sartorius_arium.SartoriusArium()
+            logger.debug("Found purification device named %s", dev.name)
+            devices += [PurificationDevice(dev.name, dev)]
+        except sartorius_arium.SartoriusAriumNotFoundException:
             pass
 
         return devices

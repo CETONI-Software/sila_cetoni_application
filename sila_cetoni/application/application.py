@@ -304,4 +304,19 @@ class Application(metaclass=Singleton):
             )
             servers += [server]
 
+        # ---------------------------------------------------------------------
+        # purification
+        for purification_device in self.system.purification_devices:
+            server_name = purification_device.name.replace("_", " ")
+
+            from sila_cetoni.purification.sila.purification_service.server import Server
+
+            server = Server(
+                device=purification_device.device,
+                server_name=server_name,
+                server_type=server_type,
+                server_uuid=Config(purification_device.name, self.system.device_config.name).server_uuid,
+            )
+            servers += [server]
+
         return servers
