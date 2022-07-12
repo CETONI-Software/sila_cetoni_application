@@ -54,7 +54,7 @@ from sila_cetoni.core.device_drivers.abc import BatteryInterface
 from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
 
 from .config import Config
-from .device import Device,DeviceConfiguration, BalanceDevice, HeatingCoolingDevice, LCMSDevice, PurificationDevice
+from .device import Device, DeviceConfiguration, BalanceDevice, HeatingCoolingDevice, LCMSDevice, PurificationDevice
 from .singleton import Singleton
 
 logger = logging.getLogger(__name__)
@@ -477,8 +477,8 @@ class ApplicationSystem(metaclass=Singleton):
 
         try:
             from sila_cetoni.balance.device_drivers import sartorius_balance
-        except (ModuleNotFoundError, ImportError):
-            logger.info("Could not find sila_cetoni.balance package - no support for balance devices!")
+        except (ModuleNotFoundError, ImportError) as err:
+            logger.info("Could not find sila_cetoni.balance package - no support for balance devices!", exc_info=err)
             return []
 
         # for now we assume that at most one balance is connected until we get
@@ -519,8 +519,8 @@ class ApplicationSystem(metaclass=Singleton):
 
         try:
             from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
-        except (ModuleNotFoundError, ImportError):
-            logger.info("Could not find sila_cetoni.lcms package - no support for LC/MS devices!")
+        except (ModuleNotFoundError, ImportError) as err:
+            logger.info("Could not find sila_cetoni.lcms package - no support for LC/MS devices!", exc_info=err)
             return None
 
         logger.debug("Looking for LC/MS")
@@ -544,8 +544,11 @@ class ApplicationSystem(metaclass=Singleton):
 
         try:
             from sila_cetoni.heating_cooling.device_drivers import huber_chiller
-        except (ModuleNotFoundError, ImportError):
-            logger.info("Could not find sila_cetoni.heating_cooling package - no support for heating/cooling devices!")
+        except (ModuleNotFoundError, ImportError) as err:
+            logger.info(
+                "Could not find sila_cetoni.heating_cooling package - no support for heating/cooling devices!",
+                exc_info=err,
+            )
             return []
 
         devices = []
@@ -571,8 +574,10 @@ class ApplicationSystem(metaclass=Singleton):
 
         try:
             from sila_cetoni.purification.device_drivers import sartorius_arium
-        except (ModuleNotFoundError, ImportError):
-            logger.info("Could not find sila_cetoni.purification package - no support for purification devices!")
+        except (ModuleNotFoundError, ImportError) as err:
+            logger.info(
+                "Could not find sila_cetoni.purification package - no support for purification devices!", exc_info=err
+            )
             return []
 
         devices = []

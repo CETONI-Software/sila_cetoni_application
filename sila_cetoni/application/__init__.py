@@ -54,9 +54,11 @@ else:
 if platform.system() != "Windows":
     try:
         import qmixsdk
-    except (ModuleNotFoundError, ImportError):
+    except (ModuleNotFoundError, ImportError) as err:
         if _NO_EXEC_OPTION in sys.argv:
-            logger.error(f"Could not find CETONI SDK in {config.CETONI_SDK_PATH} - no support for CETONI devices!")
+            logger.error(
+                f"Could not find CETONI SDK in {config.CETONI_SDK_PATH} - no support for CETONI devices!", exc_info=err
+            )
         else:
             # setup the environment for python to find the SDK and for ctypes to load the shared libs properly
             env = os.environ.copy()
