@@ -43,11 +43,6 @@ from sila_cetoni.config import CETONI_SDK_PATH
 sys.path.append(CETONI_SDK_PATH)
 sys.path.append(os.path.join(CETONI_SDK_PATH, "lib", "python"))
 
-try:
-    from qmixsdk import qmixpump
-except (ModuleNotFoundError, ImportError):
-    pass
-
 from .config import Config
 from .local_ip import LOCAL_IP
 from .singleton import Singleton
@@ -83,6 +78,12 @@ class Application(metaclass=Singleton):
         self.ip = ip
         self.base_port = base_port
         self.regenerate_certificates = regenerate_certificates
+
+    def scan_devices(self):
+        """
+        Scan for supported available devices
+        """
+        self.system.scan_devices()
 
     def run(self):
         """
@@ -172,6 +173,8 @@ class Application(metaclass=Singleton):
                     f"Cannot create SiLA 2 server for pump {pump.name} because peristaltic pumps are not yet supported!"
                 )
                 continue
+
+            from qmixsdk import qmixpump
 
             if isinstance(pump, qmixpump.ContiFlowPump):
                 from sila_cetoni.pumps.contiflowpumps.sila.contiflowpump_service.server import Server

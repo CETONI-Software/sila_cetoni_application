@@ -127,22 +127,27 @@ class ApplicationSystem(metaclass=Singleton):
             self.controllers = self.get_availabe_controllers()
             self.io_devices = self.get_availabe_io_channels()
 
+            logger.debug(f"Pumps: {self.pumps!r}")
+            logger.debug(f"axis: {self.axis_systems!r}")
+            logger.debug(f"valve devices: {self.valves!r}")
+            logger.debug(f"controller devices: {self.controllers!r}")
+            logger.debug(f"io devices: {self.io_devices!r}")
+
+        self.state = SystemState.OPERATIONAL
+
+    def scan_devices(self):
+        """
+        Scans for supported available devices
+        """
         self.balances = self.get_availabe_balances()
         self.lcms = self.get_availabe_lcms()
         self.heating_cooling_devices = self.get_availabe_heating_cooling_devices()
         self.purification_devices = self.get_availabe_purification_devices()
 
-        logger.debug(f"Pumps: {self.pumps!r}")
-        logger.debug(f"axis: {self.axis_systems!r}")
-        logger.debug(f"valve devices: {self.valves!r}")
-        logger.debug(f"controller devices: {self.controllers!r}")
-        logger.debug(f"io devices: {self.io_devices!r}")
         logger.debug(f"balance devices: {self.balances!r}")
         logger.debug(f"lcms: {self.lcms!r}")
         logger.debug(f"heating/cooling devices: {self.heating_cooling_devices!r}")
         logger.debug(f"purification devices: {self.purification_devices!r}")
-
-        self.state = SystemState.OPERATIONAL
 
     def start(self):
         """

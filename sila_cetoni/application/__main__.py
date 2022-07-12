@@ -83,13 +83,26 @@ def main(
     exec: bool = typer.Option(
         True,
         hidden=True,
-        help="Used by __init__ to indicate if the application shall be re-executed after setting the necessary environment variables",
+        help=(
+            "Used by __init__.py to indicate if the application shall be re-executed after setting the necessary "
+            "environment variables. Only use this option if you really know what it does!"
+        ),
+    ),
+    scan: bool = typer.Option(
+        False,
+        help=(
+            "Automatically scan for supported connected devices (e.g. scan for available Sartorius balances if the "
+            "sila_cetoni_balance package is installed)"
+        ),
     ),
 ):
     """
     Launches as many SiLA 2 servers as there are CETONI devices in the configuration
     """
-    Application(config_path, server_ip, server_base_port, regenerate_certificates).run()
+    application = Application(config_path, server_ip, server_base_port, regenerate_certificates)
+    if scan:
+        application.scan_devices()
+    application.run()
 
 
 if __name__ == "__main__":
