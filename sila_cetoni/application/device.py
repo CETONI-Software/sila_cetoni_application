@@ -381,5 +381,18 @@ try:
         Simple class to represent a purification device
         """
 
+        __trigger_port: str
+
+        def __init__(self, name: str, json_data: Dict) -> None:
+            super().__init__(name, json_data)
+            self.__trigger_port = json_data["trigger_port"]
+
+        def __repr__(self) -> str:
+            return super().__repr__() + f"\b, {self.__trigger_port!r})"
+
+        @property
+        def trigger_port(self) -> str:
+            return self.__trigger_port
+
 except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.purification module! No support for purification devices.")
