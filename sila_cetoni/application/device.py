@@ -26,15 +26,14 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
-import functools
 import logging
-import os
-import re
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 
-from lxml import etree, objectify
+from sila_cetoni.device_driver_abc import DeviceDriverABC
+from typing_extensions import Self
+
+from .application_configuration import SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +47,20 @@ class Device(ABC):
     _name: str
     _device_type: str
     _manufacturer: str
+    _simulated: bool
 
     @abstractmethod
-    def __init__(self, name: str, device_type: str, manufacturer: str) -> None:
+    def __init__(self, name: str, device_type: str, manufacturer: str, simulated: bool) -> None:
         self._name = name
         self._device_type = device_type
         self._manufacturer = manufacturer
+        self._simulated = simulated
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self._name!r}, {self._device_type!r}, {self.manufacturer!r})"
+        return (
+            f"{type(self).__name__}({self._name!r}, {self._device_type!r}, {self.manufacturer!r}"
+            f"{', simulated' if self.manufacturer else ''})"
+        )
 
     @property
     def name(self) -> str:
@@ -69,6 +73,10 @@ class Device(ABC):
     @property
     def manufacturer(self) -> str:
         return self._manufacturer
+
+    @property
+    def simulated(self) -> str:
+        return self._simulated
 
 
 try:
@@ -97,7 +105,7 @@ try:
         _valves: List[qmixvalve.Valve]
 
         def __init__(self, name: str, device_type: str = "dummy", handle: Type[_QmixBusDeviceT] = None) -> None:
-            super().__init__(name, device_type, "CETONI")
+            super().__init__(name, device_type, "CETONI", False)
 
             self._device_handle = handle
             self._device_properties = {}
@@ -233,7 +241,7 @@ except (ModuleNotFoundError, ImportError):
     pass
 
 
-_DeviceInterfaceT = TypeVar("_DeviceInterfaceT")
+_DeviceInterfaceT = TypeVar("_DeviceInterfaceT", bound=DeviceDriverABC)
 
 
 class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
@@ -250,7 +258,12 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
 
     def __init__(self, name: str, json_data: Dict) -> None:
         logger.info(json_data)
-        super().__init__(name, json_data["type"], json_data["manufacturer"])
+        super().__init__(
+            name,
+            json_data["type"],
+            json_data["manufacturer"],
+            json_data.get("simulated", SCHEMA["definitions"]["Device"]["properties"]["simulated"]["default"]),
+        )
         if "port" in json_data:
             self._port: str = json_data["port"]
             ThirdPartyDevice.port = property(lambda s: s._port)

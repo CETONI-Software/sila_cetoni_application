@@ -8,13 +8,14 @@ import jsonschema
 import jsonschema.exceptions
 
 from ..application import resource_dir
-from .configuration import DeviceConfiguration
-from .device import ThirdPartyDevice
-from .local_ip import LOCAL_IP
 
 SCHEMA: Dict
 with open(Path((resource_dir)).joinpath("configuration_schema.json"), "rt") as schema_file:
     SCHEMA = json.load(schema_file)
+
+from .configuration import DeviceConfiguration
+from .device import ThirdPartyDevice
+from .local_ip import LOCAL_IP
 
 logger = logging.getLogger(__name__)
 

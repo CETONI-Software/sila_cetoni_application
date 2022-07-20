@@ -131,6 +131,11 @@
                         "Shimadzu"
                     ]
                 },
+                "simulated": {
+                    "type": "boolean",
+                    "title": "Whether this device should be simulated (if possible) or not. If it's not possible to simulate this device, there won't be a SiLA server created for it.",
+                    "default": false
+                },
                 "port": {
                     "$ref": "#/definitions/Port"
                 },
