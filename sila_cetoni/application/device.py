@@ -256,6 +256,19 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
 
     _device: Type[_DeviceInterfaceT]
 
+    def __new__(cls, name: str, json_data: Dict, *args, **kwargs) -> Self:
+        device_type = json_data["type"]
+        if device_type == "balance":
+            return super().__new__(BalanceDevice)
+        elif device_type == "heating_cooling":
+            return super().__new__(HeatingCoolingDevice)
+        elif device_type == "lcms":
+            return super().__new__(LCMSDevice)
+        elif device_type == "purification":
+            return super().__new__(PurificationDevice)
+        else:
+            raise RuntimeError(f"Unknown device type {device_type!r} for {cls.__name__!r}")
+
     def __init__(self, name: str, json_data: Dict) -> None:
         logger.info(json_data)
         super().__init__(
