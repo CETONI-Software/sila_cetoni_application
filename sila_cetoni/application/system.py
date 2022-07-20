@@ -429,22 +429,28 @@ class ApplicationSystem(ApplicationSystemBase):
         is `True`
         """
 
-        devices = list(filter(lambda d: d.device_type == "purification", self._config.devices))
+        devices: List[PurificationDevice] = list(
+            filter(lambda d: d.device_type == "purification", self._config.devices)
+        )
 
         try:
             from sila_cetoni.purification.device_drivers import sartorius_arium
+
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.purification package - no support for purification devices!"
-            if len(devices) > 0:
+            if devices:
                 raise RuntimeError(msg)
             else:
                 logger.warning(msg, exc_info=err)
             return
 
         for device in devices:
-            if device.manufacturer == "Huber":
-                logger.debug(f"Connecting to chiller on port {device.port!r}")
-                device.device = sartorius_arium.SartoriusArium(device.port)
+            if device.manufacturer == "Sartorius":
+                logger.debug(f"Connecting to purification device via {device.server_url!r}")
+                SartoriusArium = (
+                    sartorius_arium.SartoriusAriumSim if device.simulated else sartorius_arium.SartoriusArium
+                )
+                device.device = SartoriusArium(device.server_url, device.trigger_port)
 
         if scan:
             logger.warning("Automatic searching for purification devices is not supported at the moment!")
