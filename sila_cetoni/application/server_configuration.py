@@ -3,25 +3,26 @@ import os
 import platform
 import uuid
 from configparser import ConfigParser
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 from sila2.server.encryption import generate_self_signed_certificate
 
+from .configuration import Configuration
 from .local_ip import LOCAL_IP
 
 logger = logging.getLogger(__name__)
 
 
-VERSION = 1
-
-
-class Config:
+class ServerConfiguration(Configuration):
     """
-    Helper class to read and write a persistent configuration file
+    The configuration for a specific SiLA server
     """
 
-    __config_path: str
+    __uuids: Set[uuid.UUID] = set()
+
     __parser: ConfigParser
+
+    VERSION = 1
 
     def __init__(self, name: str, subdir: str = "") -> None:
         """
@@ -30,24 +31,7 @@ class Config:
             :param name: Name of the config file
             :param subdir: (optional) The sub directory to store the config file in
         """
-        self.__config_path = os.path.join(self.__config_dir(subdir), name + ".ini")
-        self.__parser = ConfigParser()
-        file_exists = self.__parser.read(self.__config_path)
-
-        version = self.__parser.getint("meta", "version", fallback=0)
-        # update version
-        self.__parser["meta"] = {}
-        self.__parser["meta"]["version"] = str(VERSION)
-
-        if not file_exists:
-            logger.warning(f"Could not read config file! Creating a new one ({self.__config_path})")
-            self.__add_default_values()
-
-        if version < 1:
-            self.__add_default_values_v1()
-        # if version < 2:
-        #     self.__add_default_values_v2()
-        self.write()
+        super().__init__(name, os.path.join(self.__config_dir(subdir), name + ".ini"))
 
     @staticmethod
     def __config_dir(subdir: str = "") -> str:
@@ -59,12 +43,49 @@ class Config:
         else:
             return os.path.join(os.environ["HOME"], ".config", "sila_cetoni", subdir)
 
+    @staticmethod
+    def __unique_server_uuid() -> uuid.UUID:
+        """
+        Ensures that the randomly generated UUIDs are actually unique
+        """
+        server_uuid = uuid.uuid4()
+        logger.info(
+            f"1 new uuid {server_uuid}, already used? {server_uuid in ServerConfiguration.__uuids}, UUIDs: {ServerConfiguration.__uuids}"
+        )
+        while server_uuid in ServerConfiguration.__uuids:
+            server_uuid = uuid.uuid4()
+            logger.warning(
+                f"2 new uuid {server_uuid}, already used? {server_uuid in ServerConfiguration.__uuids}, UUIDs: {ServerConfiguration.__uuids}"
+            )
+        logger.info(f"uuid {server_uuid} is unique")
+        ServerConfiguration.__uuids.add(server_uuid)
+        return server_uuid
+
+    def _parse(self) -> None:
+        self.__parser = ConfigParser()
+        file_exists = self.__parser.read(self._file_path)
+
+        version = self.__parser.getint("meta", "version", fallback=0)
+        # update version
+        self.__parser["meta"] = {}
+        self.__parser["meta"]["version"] = str(self.VERSION)
+
+        if not file_exists:
+            logger.warning(f"Could not read config file! Creating a new one ({self._file_path})")
+            self.__add_default_values()
+
+        if version < 1:
+            self.__add_default_values_v1()
+        # if version < 2:
+        #     self.__add_default_values_v2()
+        self.write()
+
     def __add_default_values(self):
         """
         Sets all necessary entries to default values
         """
         self.__parser["server"] = {}
-        self.__parser["server"]["uuid"] = str(uuid.uuid4())
+        self.__parser["server"]["uuid"] = str(self.__unique_server_uuid())
         self.__parser["pump"] = {}
         self.__parser["axis_position_counters"] = {}
 
@@ -72,9 +93,9 @@ class Config:
         """
         Sets all necessary entries to default values for version 1 of the config file
         """
-        self.generate_self_signed_certificate()
+        self.generate_self_signed_certificate(LOCAL_IP)
 
-    def generate_self_signed_certificate(self, ip: str = LOCAL_IP):
+    def generate_self_signed_certificate(self, ip: str):
         """
         Generates a self-signed certificate and a private key and stores that into the config file
 
@@ -90,8 +111,8 @@ class Config:
         """
         Writes the current configuration to the file
         """
-        os.makedirs(os.path.dirname(self.__config_path), exist_ok=True)
-        with open(self.__config_path, "w") as config_file:
+        os.makedirs(os.path.dirname(self._file_path), exist_ok=True)
+        with open(self._file_path, "w") as config_file:
             self.__parser.write(config_file)
 
     @property

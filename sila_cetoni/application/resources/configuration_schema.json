@@ -1,0 +1,248 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$ref": "#/definitions/DeviceConfiguration",
+    "definitions": {
+        "DeviceConfiguration": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "$schema": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "qt-uri-protocols": [
+                        "http",
+                        "https"
+                    ]
+                },
+                "version": {
+                    "type": "integer",
+                    "title": "The device configuration file version"
+                },
+                "server_ip": {
+                    "type": "string",
+                    "anyOf": [
+                        {
+                            "format": "ipv4"
+                        },
+                        {
+                            "format": "ipv6"
+                        }
+                    ],
+                    "title": "The IP address on which the servers should run. This value can be overwritten by the CLI option -i/--server-ip IP."
+                },
+                "server_base_port": {
+                    "type": "integer",
+                    "default": 50051,
+                    "title": "The port number for the first SiLA Server. This value can be overwritten by the CLI option -p/--server-base-port PORT."
+                },
+                "regenerate_certificates": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Force regeneration of the self-signed certificates (e.g. if the IP address of the machine running the servers changed). This value can be overwritten by the CLI option --regenerate-certificates."
+                },
+                "log_level": {
+                    "type": "string",
+                    "enum": [
+                        "debug",
+                        "info",
+                        "warning",
+                        "error",
+                        "critical"
+                    ],
+                    "default": "info",
+                    "title": "Set the logging level of the application. This value can be overwritten by the CLI option -l/--log-level LEVEL."
+                },
+                "log_file_dir": {
+                    "type": "string",
+                    "title": "The directory to write log files to (if not given log messages will only be printed to standard out). This value can be overwritten by the CLI option --log-file-dir DIR."
+                },
+                "scan_devices": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Automatically scan for supported connected devices (e.g. scan for available Sartorius balances if the sila_cetoni_balance package is installed). This value can be overwritten by the CLI option --scan-devices/--no-scan-devices."
+                },
+                "cetoni_devices": {
+                    "$ref": "#/definitions/CetoniDevices"
+                },
+                "devices": {
+                    "$ref": "#/definitions/Devices"
+                }
+            },
+            "required": [
+                "version"
+            ],
+            "anyOf": [
+                {
+                    "required": [
+                        "cetoni_devices"
+                    ]
+                },
+                {
+                    "required": [
+                        "devices"
+                    ]
+                }
+            ]
+        },
+        "CetoniDevices": {
+            "type": "object",
+            "title": "The CETONI devices of the system represented by the device configuration",
+            "additionalProperties": false,
+            "properties": {
+                "device_config_path": {
+                    "type": "string",
+                    "title": "Path to a valid CETONI device configuration created with the CETONI Elements software"
+                }
+            },
+            "required": [
+                "device_config_path"
+            ]
+        },
+        "Devices": {
+            "type": "object",
+            "title": "All devices that are not configurable via CETONI Elements (i.e. 3rd-party devices that have an exclusive device driver implementation in sila_cetoni",
+            "additionalProperties": {
+                "$ref": "#/definitions/Device"
+            },
+            "properties": {},
+            "required": []
+        },
+        "Device": {
+            "type": "object",
+            "title": "A 3rd-party device that has support in sila_cetoni through an included device driver implementation",
+            "additionalProperties": true,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "title": "The device type",
+                    "enum": [
+                        "balance",
+                        "heating_cooling",
+                        "lcms",
+                        "purification"
+                    ]
+                },
+                "manufacturer": {
+                    "type": "string",
+                    "title": "The device manufacturer",
+                    "enum": [
+                        "Sartorius",
+                        "Huber",
+                        "Shimadzu"
+                    ]
+                },
+                "port": {
+                    "$ref": "#/definitions/Port"
+                },
+                "server_url": {
+                    "$ref": "#/definitions/ServerUrl"
+                }
+            },
+            "required": [
+                "type",
+                "manufacturer"
+            ],
+            "not": {
+                "required": [
+                    "port",
+                    "server_url"
+                ]
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "balance"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "manufacturer": {
+                                "enum": [
+                                    "Sartorius"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "heating_cooling"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "manufacturer": {
+                                "enum": [
+                                    "Huber"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "lcms"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "manufacturer": {
+                                "enum": [
+                                    "Shimadzu"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "purification"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "manufacturer": {
+                                "enum": [
+                                    "Sartorius"
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "Port": {
+            "type": "string",
+            "title": "The serial port used to communicate with the device (e.g. COM1 or /dev/ttyUSB1)",
+            "examples": [
+                "COM1",
+                "/dev/ttyUSB1"
+            ]
+        },
+        "ServerUrl": {
+            "type": "string",
+            "title": "The URL to a server running on the device providing an API to control the device (e.g. a REST API)",
+            "format": "uri",
+            "qt-uri-protocols": [
+                "http",
+                "https"
+            ],
+            "examples": [
+                "http://device.local/rest/v1_0/",
+                "http://192.168.0.100/rest/v1_0/"
+            ]
+        }
+    }
+}

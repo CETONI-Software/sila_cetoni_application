@@ -12,7 +12,7 @@ ________________________________________________________________________
 :authors: Florian Meinicke
 
 :date: (creation)          2021-07-15
-:date: (last modification) 2021-07-15
+:date: (last modification) 2022-07-18
 
 ________________________________________________________________________
 
@@ -26,391 +26,334 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 
 from lxml import etree, objectify
-
-CETONI_SDK_IMPORTED = True
-try:
-    # import qmixsdk
-    from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
-except (ModuleNotFoundError, ImportError):
-    CETONI_SDK_IMPORTED = False
-
-if TYPE_CHECKING:
-    from sila_cetoni.balance.device_drivers import BalanceInterface
-    from sila_cetoni.heating_cooling.device_drivers import TemperatureControllerInterface
-    from sila_cetoni.lcms.device_drivers import LCMSInterface
-    from sila_cetoni.purification.device_drivers import PurificationDeviceInterface
 
 logger = logging.getLogger(__name__)
 
 
-class Device:
+class Device(ABC):
     """
-    Simple data class that holds information about a single device on the CAN bus
+    An abstract interface for a device as it is represented in a device configuration file (e.g. a config.json or a
+    CETONI device configuration)
     """
 
-    name: str
-    properties: Dict[str, Any]
+    _name: str
+    _device_type: str
+    _manufacturer: str
 
-    # a device *might* have any combination and number of the following
-    io_channels: List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]
-    controller_channels: List[qmixcontroller.ControllerChannel]
-    valves: List[qmixvalve.Valve]
+    @abstractmethod
+    def __init__(self, name: str, device_type: str, manufacturer: str) -> None:
+        self._name = name
+        self._device_type = device_type
+        self._manufacturer = manufacturer
 
-    def __init__(self, name: str):
-        self.name = name
-        self.properties = {}
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._name!r}, {self._device_type!r}, {self.manufacturer!r})"
 
-        self.valves = []
-        self.controller_channels = []
-        self.io_channels = []
+    @property
+    def name(self) -> str:
+        return self._name
 
-    def __str__(self) -> str:
-        return f"{self.name} {self.properties if self.properties else ''}"
+    @property
+    def device_type(self) -> str:
+        return self._device_type
+
+    @property
+    def manufacturer(self) -> str:
+        return self._manufacturer
+
+
+try:
+    from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+
+    _QmixBusDeviceT = TypeVar("_QmixBusDeviceT", bound=qmixbus.Device)
+
+    class CetoniDevice(Device, Generic[_QmixBusDeviceT]):
+        """
+        A CETONI device represented by a device handle, (optional) device properties, and optional I/O channels,
+        controller channels and valves (some devices may have I/O channels, controller channels or valves attached to
+        them which are not handled as individual devices but a re considered part of the device they are attaches to).
+
+        Template Parameters
+        -------------------
+        _QmixBusDeviceT: type
+            The type of the device handle (e.g. `qmixpump.Pump`)
+        """
+
+        _device_handle: Type[_QmixBusDeviceT]
+        _device_properties: Dict[str, Any]
+
+        # a device *might* have any combination and number of the following
+        _io_channels: List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]
+        _controller_channels: List[qmixcontroller.ControllerChannel]
+        _valves: List[qmixvalve.Valve]
+
+        def __init__(self, name: str, device_type: str = "dummy", handle: Type[_QmixBusDeviceT] = None) -> None:
+            super().__init__(name, device_type, "CETONI")
+
+            self._device_handle = handle
+            self._device_properties = {}
+
+            self._valves = []
+            self._controller_channels = []
+            self._io_channels = []
+
+        def __str__(self) -> str:
+            return super().__str__() + f"\b, {self._device_handle}, {self._device_properties!r})"
+
+        def __repr__(self) -> str:
+            return super().__repr__() + (
+                f"\b, {self._device_handle}, {self._device_properties!r}, {[v.get_device_name() for v in self._valves]}"
+                f", {[c.get_name() for c in self._controller_channels]}, {[c.get_name() for c in self._io_channels]}="
+            )
+
+        @property
+        def device_handle(self) -> Type[_QmixBusDeviceT]:
+            return self._device_handle
+
+        @property
+        def device_properties(self) -> Dict[str, Any]:
+            return self._device_properties
+
+        @property
+        def io_channels(self) -> List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]:
+            return self._io_channels
+
+        @io_channels.setter
+        def io_channels(self, io_channels: List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]):
+            self._io_channels = io_channels
+
+        @property
+        def controller_channels(self) -> List[qmixcontroller.ControllerChannel]:
+            return self._controller_channels
+
+        @controller_channels.setter
+        def controller_channels(self, controller_channels: List[qmixcontroller.ControllerChannel]):
+            self._controller_channels = controller_channels
+
+        @property
+        def valves(self) -> List[qmixvalve.Valve]:
+            return self._valves
+
+        @valves.setter
+        def valves(self, valves: List[qmixvalve.Valve]):
+            self._valves = valves
+
+        def set_device_property(self, name: str, value: Any):
+            """
+            Set the device property `name` to the given value `value`
+            If the property is not present yet it will be added automatically
+            """
+            self._device_properties[name] = value
+
+        def set_operational(self):
+            """
+            Set the device (and all of its valves, if present) into operational state
+            """
+            logger.info("cetoni set_operational")
+            self._device_handle.set_communication_state(qmixbus.CommState.operational)
+            for valve in self._valves:
+                valve.set_communication_state(qmixbus.CommState.operational)
+
+    class CetoniPumpDevice(CetoniDevice[qmixpump.Pump]):
+        """
+        Simple wrapper around `qmixpump.Pump` with additional information from the `CetoniDevice` class
+        """
+
+        _is_peristaltic_pump: bool
+
+        def __init__(self, name: str, handle: qmixpump.Pump) -> None:
+            super().__init__(name, "contiflow_pump" if isinstance(handle, qmixpump.ContiFlowPump) else "pump", handle)
+            self._is_peristaltic_pump = False
+
+        @property
+        def is_peristaltic_pump(self) -> bool:
+            return self._is_peristaltic_pump
+
+        @is_peristaltic_pump.setter
+        def is_peristaltic_pump(self, is_peristaltic_pump):
+            self._is_peristaltic_pump = is_peristaltic_pump
+            self._device_type = "peristaltic_pump" if is_peristaltic_pump else "pump"
+
+        def set_operational(self):
+            super().set_operational()
+            self._device_handle.clear_fault()
+            self._device_handle.enable(False)
+            while not self._device_handle.is_enabled():
+                self._device_handle.enable(True)
+
+    class CetoniAxisSystemDevice(CetoniDevice[qmixmotion.AxisSystem]):
+        """
+        Simple wrapper around `qmixmotion.AxisSystem` with additional information from the `CetoniDevice` class
+        """
+
+        def __init__(self, name: str, handle: qmixmotion.AxisSystem) -> None:
+            super().__init__(name, "axis_system", handle)
+
+        def set_operational(self):
+            super().set_operational()
+            self._device_handle.enable(False)
+
+    class CetoniValveDevice(CetoniDevice[qmixvalve.Valve]):
+        """
+        Simple class to represent a valve device that has an arbitrary number of valves (inherited from the
+        `CetoniDevice` class)
+        """
+
+        def __init__(self, name: str) -> None:
+            super().__init__(name, "valve")
+
+    class CetoniControllerDevice(CetoniDevice[qmixcontroller.ControllerChannel]):
+        """
+        Simple class to represent a controller device that has an arbitrary number of controller channels
+        (inherited from the `CetoniDevice` class)
+        """
+
+        def __init__(self, name: str) -> None:
+            super().__init__(name, "controller")
+
+    class CetoniIODevice(CetoniDevice[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]):
+        """
+        Simple class to represent an I/O device that has an arbitrary number of analog and digital I/O channels
+        (inherited from the `CetoniDevice` class)
+        """
+
+        def __init__(self, name: str) -> None:
+            super().__init__(name, "io")
+
+except (ModuleNotFoundError, ImportError):
+    pass
+
+
+_DeviceInterfaceT = TypeVar("_DeviceInterfaceT")
+
+
+class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
+    """
+    A generic third-party (i.e. non-CETONI) device represented by a device driver interface
+
+        Template Parameters
+        -------------------
+        _DeviceInterfaceT: type
+            The type of the device driver interface (e.g. `BalanceInterface`)
+    """
+
+    _device: Type[_DeviceInterfaceT]
+
+    def __init__(self, name: str, json_data: Dict) -> None:
+        logger.info(json_data)
+        super().__init__(name, json_data["type"], json_data["manufacturer"])
+        if "port" in json_data:
+            self._port: str = json_data["port"]
+            ThirdPartyDevice.port = property(lambda s: s._port)
+        if "server_url" in json_data:
+            self._server_url: str = json_data["server_url"]
+            ThirdPartyDevice.server_url = property(lambda s: s._server_url)
 
     def __repr__(self) -> str:
         return (
-            f"{self.name} {self.properties if self.properties else ''} "
-            f"{[v.get_device_name() for v in self.valves]} "
-            f"{[c.get_name() for c in self.controller_channels]} "
-            f"{[c.get_name() for c in self.io_channels]}"
+            super().__repr__() + f"\b{(', ' + repr(self.port)) if hasattr(self, 'port') else ''}"
+            f"{', ' + repr(self.server_url) if hasattr(self, 'server_url') else ''}"
+            f"{', ' + repr(self.device) if hasattr(self, 'device') else ''})"
         )
 
-    def set_device_property(self, name: str, value: Any):
-        """
-        Set the device property `name` to the given value `value`
-        If the property is not present yet it will be added automatically
-        """
-        self.properties[name] = value
+    @property
+    def device(self) -> Type[_DeviceInterfaceT]:
+        return self._device
 
-    def set_operational(self):
-        """
-        Set the device (and all of its valves, if present) into operational state
-        """
-        for valve in self.valves:
-            valve.set_communication_state(qmixbus.CommState.operational)
-
-    @classmethod
-    def convert_to_class(cls, obj, **kwargs):
-        """
-        Convert this general device to a specific device (e.g. a `PumpDevice`)
-        `kwargs` are passed to the new class to initialize any additional members
-        that this class might have
-            >>> device = Device("pump")
-                pump = qmixpump.Pump()
-                pump.lookup_by_device_index(0)
-                PumpDevice.convert_to_class(device, handle=pump.handle)
-
-        :param cls: The class to convert `obj` to
-        :param obj: The object to convert
-        :param kwargs: Additional arguments used to initialize members of the new class
-        """
-        obj.__class__ = cls
-        for name, value in kwargs.items():
-            obj.__setattr__(name, value)
-
-if CETONI_SDK_IMPORTED:
-
-    class PumpDevice(qmixpump.Pump, Device):
-        """
-        Simple wrapper around `qmixpump.Pump` with additional information from the
-        `Device` class
-        """
-
-        is_peristaltic_pump: bool = False
-
-        def __init__(self, name: str):
-            super().__init__(name)
-
-        def set_operational(self):
-            super().set_operational()
-            self.set_communication_state(qmixbus.CommState.operational)
-            self.clear_fault()
-            self.enable(False)
-            while not self.is_enabled():
-                self.enable(True)
+    @device.setter
+    def device(self, device: Type[_DeviceInterfaceT]):
+        self._device = device
 
 
-    class AxisSystemDevice(qmixmotion.AxisSystem, Device):
-        """
-        Simple wrapper around `qmixmotion.AxisSystem` with additional information
-        from the `Device` class
-        """
-
-        def __init__(self, name: str):
-            super().__init__(name)
-
-        def set_operational(self):
-            super().set_operational()
-            self.set_communication_state(qmixbus.CommState.operational)
-            self.enable(True)
-
-
-    class ValveDevice(Device):
-        """
-        Simple class to represent a valve device that has an arbitrary number of
-        valves (inherited from the `Device` class)
-        """
-
-        def __init__(self, name: str):
-            super().__init__(name)
-
-
-    class ControllerDevice(Device):
-        """
-        Simple class to represent a controller device that has an arbitrary number of
-        controller channels (inherited from the `Device` class)
-        """
-
-        def __init__(self, name: str):
-            super().__init__(name)
-
-
-    class IODevice(Device):
-        """
-        Simple class to represent an I/O device that has an arbitrary number of analog
-        and digital I/O channels (inherited from the `Device` class)
-        """
-
-        def __init__(self, name: str):
-            super().__init__(name)
-
-
-class BalanceDevice(Device):
+class PumpDevice(ThirdPartyDevice):
     """
-    Simple class to represent a balance device
+    Simple class to represent a pump device
     """
 
-    device: BalanceInterface
-
-    def __init__(self, name: str, device: Optional[BalanceInterface] = None):
-        super().__init__(name)
-
-        self.device = device
+    pass
 
 
-class LCMSDevice(Device):
+class AxisSystemDevice(ThirdPartyDevice):
     """
-    Simple class to represent an LC/MS device
+    Simple class to represent an axis system device
     """
 
-    device: LCMSInterface
-
-    def __init__(self, name: str, device: Optional[LCMSInterface] = None):
-        super().__init__(name)
-
-        self.device = device
+    pass
 
 
-class HeatingCoolingDevice(Device):
+class ValveDevice(ThirdPartyDevice):
     """
-    Simple class to represent a heating/cooling device
+    Simple class to represent a valve device
     """
 
-    device: TemperatureControllerInterface
-
-    def __init__(self, name: str, device: Optional[TemperatureControllerInterface] = None):
-        super().__init__(name)
-
-        self.device = device
+    pass
 
 
-class PurificationDevice(Device):
+class ControllerDevice(ThirdPartyDevice):
     """
-    Simple class to represent a purification device
+    Simple class to represent a controller device
     """
 
-    device: PurificationDeviceInterface
-
-    def __init__(self, name: str, device: Optional[PurificationDeviceInterface] = None):
-        super().__init__(name)
-
-        self.device = device
+    pass
 
 
-class DeviceConfiguration:
+class IODevice(ThirdPartyDevice):
     """
-    Contains specific parts of the device configuration that is also used by the
-    `qmixbus.Bus`.
-    Provides means to parse the configuration from a given configuration folder
+    Simple class to represent an I/O device
     """
 
-    EMPTY: DeviceConfiguration
+    pass
 
-    path: Path
-    name: str
-    devices: List[Device] = []
-    has_battery: bool = False
 
-    def __new__(cls, *args, **kwargs):
-        self = super().__new__(cls)
-        if not args and not kwargs:
-            self.path = ""
-            self.name = "empty"
-        return self
+try:
+    from sila_cetoni.balance.device_drivers import BalanceInterface
 
-    def __init__(self, path: Path):
+    class BalanceDevice(ThirdPartyDevice[BalanceInterface]):
         """
-        Parses the device configuration files located in the folder given by the
-        `config_path` parameter.
-
-        :param config_path: Path to a valid device configuration
+        Simple class to represent a balance device
         """
-        logger.debug(f"Parsing device configuration {path}")
-        self.path = path
-        self.name = path.name
-        self.devices = []
 
-        self._parse()
+except (ModuleNotFoundError, ImportError):
+    logger.warning(f"Could not find sila_cetoni.balance module! No support for balance devices.")
 
-    def _parse(self):
+try:
+    from sila_cetoni.lcms.device_drivers import LCMSInterface
+
+    class LCMSDevice(ThirdPartyDevice[LCMSInterface]):
         """
-        Parses the device configuration
+        Simple class to represent an LC/MS device
         """
-        tree: objectify.ObjectifiedElement
-        with open(os.path.join(self.path, "device_properties.xml")) as f:
-            tree = objectify.parse(f)
-        root = tree.getroot()
-        for plugin in root.Core.PluginList.iterchildren():
-            if plugin.text in (
-                "qmixelements",
-                "scriptingsystem",
-                "labbcanservice",
-                "canopentools",
-                "qmixdevices",
-                "datalogger",
-            ):
-                # these files are the only ones with UTF-8 w/ BOM which leads to
-                # an error while parsing the file; since we don't need them anyway
-                # we can skip them
-                continue
 
-            self._parse_plugin(plugin.text)
+except (ModuleNotFoundError, ImportError):
+    logger.warning(f"Could not find sila_cetoni.lcms module! No support for lcms devices.")
 
-        filtered_devices = [device for device in filter(self.__unneeded_devices, self.devices)]
-        self.devices = [device for device in map(self.__fix_device_name, filtered_devices)]
+try:
+    from sila_cetoni.heating_cooling.device_drivers import TemperatureControllerInterface
 
-        logger.debug(f"Found the following devices: {self.devices}")
-
-        try:
-            self.has_battery = bool(root.SiLA.BatteryPowered)
-        except AttributeError:
-            self.has_battery = False
-
-    def _parse_plugin(self, plugin_name: str):
+    class HeatingCoolingDevice(ThirdPartyDevice[TemperatureControllerInterface]):
         """
-        Parses the configuration for the plugin named `plugin_name`
-
-        :param plugin_name: The name of the plugin to parse
+        Simple class to represent a heating/cooling device
         """
-        logger.debug(f"Parsing configuration for {plugin_name} plugin")
-        # we need to create a new parser that parses our 'broken' XML files
-        # (they are regarded as 'broken' because they contain multiple root tags)
-        parser: etree.XMLParser = objectify.makeparser(recover=True, remove_comments=True)
-        with open(os.path.join(self.path, plugin_name + ".xml")) as f:
-            # wrap the 'broken' XML in a new <root> so that we can parse the
-            # whole document instead of just the first root
-            lines = f.readlines()
-            fixed_xml = bytes(lines[0] + "<root>" + "".join(lines[1:]) + "</root>", "utf-8")
 
-            plugin_tree: objectify.ObjectifiedElement = objectify.fromstring(fixed_xml, parser)
-            plugin_root: objectify.ObjectifiedElement = plugin_tree.Plugin
-            try:
-                # a balance has no labbCAN device yet
-                device_list: objectify.ObjectifiedElement = (
-                    plugin_root.DeviceList if plugin_name == "balance" else plugin_root.labbCAN.DeviceList
-                )
-                device: objectify.ObjectifiedElement  # only for typing
-                for device in device_list.iterchildren():
-                    self.devices += [Device(device.get("Name"))]
-            except AttributeError:
-                pass
+except (ModuleNotFoundError, ImportError):
+    logger.warning(f"Could not find sila_cetoni.heating_cooling module! No support for heating/cooling devices.")
 
-            if "rotaxys" in plugin_name:
-                # no possibility to find the jib length elsewhere
-                for device in plugin_root.DeviceList.iterchildren():
-                    self.device_by_name(device.get("Name")).set_device_property(
-                        "jib_length", abs(int(device.JibLength.text))
-                    )
-            if "tubingpump" in plugin_name:
-                # no other way to identify a peristaltic pump
-                for device in plugin_root.labbCAN.DeviceList.iterchildren():
-                    setattr(self.device_by_name(device.get("Name")), "is_peristaltic_pump", True)
+try:
+    from sila_cetoni.purification.device_drivers import PurificationDeviceInterface
 
-    @staticmethod
-    def __unneeded_devices(device: Device):
+    class PurificationDevice(ThirdPartyDevice[PurificationDeviceInterface]):
         """
-        Filter the devices as they contains more than the actual physical modules that we're after
+        Simple class to represent a purification device
         """
-        # A pump might have a valve attached to it that is handled by the
-        # pump server (i.e. we don't want to spawn another server just for
-        # this valve). These valves are all named "<Pump Name>_Valve".
-        # Same goes for the individual valves of a Festo module. All valves of a
-        # module are represented by a single server so we need to filter the
-        # individual valve devices from the device list.
-        regexp = re.compile("(.*Epos.*)|(.*_SmcDrive$)|(.*Valve\d?$)")
-        return regexp.match(device.name) is None
 
-    @staticmethod
-    def __fix_device_name(device: Device):
-        """
-        Some devices are represented as '<device>_ChipF40' but we only want it to be '<device>'
-        """
-        device.name = device.name.split("_ChipF40", 1)[0]
-        return device
-
-    def device_by_name(self, name: str):
-        """
-        Retrieves a Device by its name
-
-        Raises ValueError if there is no Device with the `name` present.
-
-        :param name: The name of the device to get
-        :return: The Device with the given `name`
-        """
-        for device in self.devices:
-            if name == device.name:
-                return device
-        raise ValueError(f"No device with name {name}")
-
-    def add_channels_to_device(
-        self,
-        channels: List[Union[qmixcontroller.ControllerChannel, qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]],
-    ) -> List[Device]:
-        """
-        A device might have controller or I/O channels. This relationship between
-        a device and its channels is constructed here.
-        If a device is not of a specific type yet (i.e. it's not a `PumpDevice`,
-        `AxisSystemDevice` or `ValveDevice`) it is converted to either a `ControllerDevice`
-        or an `IODevice` depending on the type of the channel.
-
-        :param channels: A list of channels that should be mapped to their corresponding devices
-        :return: A list of all devices where a channel has been added
-        """
-        devices = set()
-
-        for channel in channels:
-            channel_name = channel.get_name()
-            for device in self.devices:
-                if device.name.rsplit("_Pump", 1)[0] in channel_name:
-                    logger.debug(f"Channel {channel_name} belongs to device {device}")
-                    if isinstance(channel, qmixcontroller.ControllerChannel):
-                        device.controller_channels += [channel]
-                        if type(device) == Device:
-                            ControllerDevice.convert_to_class(device)
-                            devices.add(device)
-                    else:
-                        device.io_channels += [channel]
-                        if type(device) == Device:
-                            IODevice.convert_to_class(device)
-                            devices.add(device)
-        return list(devices)
-
-
-DeviceConfiguration.EMPTY = DeviceConfiguration.__new__(DeviceConfiguration)
+except (ModuleNotFoundError, ImportError):
+    logger.warning(f"Could not find sila_cetoni.purification module! No support for purification devices.")

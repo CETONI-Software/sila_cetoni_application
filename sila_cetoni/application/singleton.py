@@ -25,11 +25,33 @@ ________________________________________________________________________
 ________________________________________________________________________
 """
 
+from abc import ABCMeta
+
+
 # taken from https://stackoverflow.com/questions/6760685/creating-a-singleton-in-python
-class Singleton(type):
+class SingletonMeta(type):
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+            cls._instances[cls] = super(SingletonMeta, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+# https://stackoverflow.com/a/33364149/12780516
+class ABCSingletonMeta(ABCMeta, SingletonMeta):
+    pass
+
+
+class Singleton(metaclass=SingletonMeta):
+    """
+    Helper class that provides a standard way to create a Singleton using inheritance.
+
+    (inspired by abc.ABC)
+    """
+
+    __slots__ = ()
+
+
+class ABCSingleton(metaclass=ABCSingletonMeta):
+    __slots__ = ()

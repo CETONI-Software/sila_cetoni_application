@@ -11,6 +11,10 @@ except ModuleNotFoundError:
 
 import sila_cetoni.config as config
 
+resource_dir = os.path.join(os.path.dirname(__file__), "resources")
+
+__all__ = ["resource_dir"]
+
 _NO_EXEC_OPTION = "--no-exec"
 _CETONI_SDK_PATH_KEY = "CETONI_SDK_PATH"
 
@@ -51,33 +55,36 @@ else:
                 config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK")
                 logger.info(f"Running on generic Linux - setting SDK path to '{config.CETONI_SDK_PATH}'")
 
-if platform.system() != "Windows":
-    try:
-        import qmixsdk
-    except (ModuleNotFoundError, ImportError) as err:
-        if _NO_EXEC_OPTION in sys.argv:
-            logger.error(
-                f"Could not find CETONI SDK in {config.CETONI_SDK_PATH} - no support for CETONI devices!", exc_info=err
-            )
-        else:
-            # setup the environment for python to find the SDK and for ctypes to load the shared libs properly
-            env = os.environ.copy()
-            env["PATH"] = os.pathsep.join((config.CETONI_SDK_PATH, env["PATH"]))
-            env["PYTHONPATH"] = os.pathsep.join(
-                (os.path.join(config.CETONI_SDK_PATH, "python"), env.get("PYTHONPATH", ""))
-            )
-            env["LD_LIBRARY_PATH"] = os.pathsep.join(
-                (os.path.join(config.CETONI_SDK_PATH, "lib"), env.get("LD_LIBRARY_PATH", ""))
-            )
-            # uncomment the following line if you get an error like 'undefined symbol: __atomic_exchange_8'
-            env["LD_PRELOAD"] = os.pathsep.join(
-                ("/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0", env.get("LD_PRELOAD", ""))
-            )
-            # logger.info(env)
+# adjust PATH variable to point to the SDK
+sys.path.append(config.CETONI_SDK_PATH)
+sys.path.append(os.path.join(config.CETONI_SDK_PATH, "lib", "python"))
 
-            if sys.argv[0] == "-m":
-                # started via `python -m sila_cetoni.application <args>`
-                os.execve(sys.executable, [sys.executable, "-m", __name__] + sys.argv[1:] + [_NO_EXEC_OPTION], env)
-            else:
-                # started via `sila-cetoni <args>`
-                os.execve(sys.argv[0], sys.argv + [_NO_EXEC_OPTION], env)
+try:
+    import qmixsdk
+
+    logger.info(f"Found CETONI SDK in {config.CETONI_SDK_PATH}")
+except (ModuleNotFoundError, ImportError) as err:
+    if platform.system() == "Windows" or _NO_EXEC_OPTION in sys.argv:
+        logger.error(
+            f"Could not find CETONI SDK in {config.CETONI_SDK_PATH} - no support for CETONI devices!", exc_info=err
+        )
+    else:
+        # setup the environment for python to find the SDK and for ctypes to load the shared libs properly
+        env = os.environ.copy()
+        env["PATH"] = os.pathsep.join((config.CETONI_SDK_PATH, env["PATH"]))
+        env["PYTHONPATH"] = os.pathsep.join((os.path.join(config.CETONI_SDK_PATH, "python"), env.get("PYTHONPATH", "")))
+        env["LD_LIBRARY_PATH"] = os.pathsep.join(
+            (os.path.join(config.CETONI_SDK_PATH, "lib"), env.get("LD_LIBRARY_PATH", ""))
+        )
+        # uncomment the following line if you get an error like 'undefined symbol: __atomic_exchange_8'
+        env["LD_PRELOAD"] = os.pathsep.join(
+            ("/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0", env.get("LD_PRELOAD", ""))
+        )
+        # logger.info(env)
+
+        if sys.argv[0] == "-m":
+            # started via `python -m sila_cetoni.application <args>`
+            os.execve(sys.executable, [sys.executable, "-m", __name__] + sys.argv[1:] + [_NO_EXEC_OPTION], env)
+        else:
+            # started via `sila-cetoni <args>`
+            os.execve(sys.argv[0], sys.argv + [_NO_EXEC_OPTION], env)

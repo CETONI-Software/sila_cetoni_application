@@ -26,25 +26,29 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
-import argparse
 import concurrent.futures
 import logging
-import os
-import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List
 
 from sila2.server import SilaServer
 
-from sila_cetoni.config import CETONI_SDK_PATH
+if TYPE_CHECKING:
+    from sila_cetoni.application.device import (
+        CetoniPumpDevice,
+        CetoniAxisSystemDevice,
+        CetoniControllerDevice,
+        CetoniIODevice,
+        CetoniValveDevice,
+        BalanceDevice,
+        HeatingCoolingDevice,
+        LCMSDevice,
+        PurificationDevice,
+    )
 
-# adjust PATH variable to point to the SDK
-sys.path.append(CETONI_SDK_PATH)
-sys.path.append(os.path.join(CETONI_SDK_PATH, "lib", "python"))
-
-from .config import Config
-from .local_ip import LOCAL_IP
+from .application_configuration import ApplicationConfiguration
+from .server_configuration import ServerConfiguration
 from .singleton import Singleton
 from .system import ApplicationSystem
 
@@ -53,63 +57,58 @@ DEFAULT_BASE_PORT = 50051
 logger = logging.getLogger(__name__)
 
 
-class Application(metaclass=Singleton):
+class Application(Singleton):
     """
     Encompasses the main application logic
     """
 
-    system: ApplicationSystem
+    __system: ApplicationSystem
 
-    ip: str
-    base_port: int
-    servers: List[SilaServer]
-    regenerate_certificates: bool
+    __config: ApplicationConfiguration  # parsed from `config_file`
+    __servers: List[SilaServer]
 
-    def __init__(
-        self,
-        device_config_path: Optional[Path] = None,
-        ip: str = LOCAL_IP,
-        base_port: int = DEFAULT_BASE_PORT,
-        regenerate_certificates: bool = False,
-    ):
+    def __init__(self, config_file_path: Path):
 
-        self.system = ApplicationSystem(device_config_path)
+        self.__config = ApplicationConfiguration(config_file_path.stem, config_file_path)
 
-        self.ip = ip
-        self.base_port = base_port
-        self.regenerate_certificates = regenerate_certificates
+    @property
+    def config(self) -> ApplicationConfiguration:
+        return self.__config
 
-    def scan_devices(self):
-        """
-        Scan for supported available devices
-        """
-        self.system.scan_devices()
-
-    def run(self):
+    def run(self) -> bool:
         """
         Run the main application loop
 
         Starts the whole system (i.e. all devices) and all SiLA 2 servers
         Runs until Ctrl-C is pressed on the command line or `stop()` has been called
+
+        Returns
+        -------
+        bool
+            Whether the application could run normally or not (i.e. when there was an error during startup)
+            `True` means the application ran normally, `False` means the application did not run normally, e.g. because
+            the servers could not be started.
         """
-        self.system.start()
+        self.__system = ApplicationSystem(self.__config)
+        self.__system.start()
 
-        logger.debug("Creating SiLA 2 servers...")
-        self.servers = self.create_servers()
+        self.__create_servers()
 
-        if not self.servers:
+        if not self.__servers:
             logger.info("No SiLA Servers to run")
-            self.system.stop()
+            self.__system.stop()
             return
 
         try:
-            self.start_servers()
+            self.__start_servers()
             print("Press Ctrl-C to stop...", flush=True)
-            while not self.system.state.shutting_down():
+            while not self.__system.state.shutting_down():
                 time.sleep(1)
         except KeyboardInterrupt:
             print()
             self.stop()
+            return True
+        return False
 
     def stop(self):
         """
@@ -117,209 +116,150 @@ class Application(metaclass=Singleton):
 
         Shuts down all SiLA 2 servers and stops the whole system
         """
-        self.stop_servers()
-        self.system.stop()
+        self.__stop_servers()
+        self.__system.stop()
 
-    def start_servers(self):
+    def __start_servers(self):
         """
         Starts all SiLA 2 servers
         """
         logger.debug("Starting SiLA 2 servers...")
-        port = self.base_port
-        for server in self.servers:
+        port = self.__config.server_base_port
+        for server in self.__servers:
             try:
-                config = Config(server.server_name.replace(" ", "_"), self.system.device_config.name)
-                if self.regenerate_certificates:
-                    config.generate_self_signed_certificate(self.ip)
+                config = ServerConfiguration(server.server_name.replace(" ", "_"), self.__system.device_config.name)
+                if self.__config.regenerate_certificates:
+                    config.generate_self_signed_certificate(self.__config.server_ip)
                 server.start(
-                    self.ip,
+                    self.__config.server_ip,
                     port,
                     private_key=config.ssl_private_key,
                     cert_chain=config.ssl_certificate,
                     ca_for_discovery=config.ssl_certificate,
                 )
-                logger.info(f"Starting SiLA 2 server {server.server_name!r} on {LOCAL_IP}:{port}")
+                logger.info(
+                    f"Starting SiLA 2 server {server.server_name!r} on {self.__config.server_ip}:{port} (UUID: {config.server_uuid})"
+                )
             except (RuntimeError, concurrent.futures.TimeoutError) as err:
-                logger.error(str(err))
+                logger.critical(err, exc_info=err)
                 self.stop()
+                break
             port += 1
-        logger.info("All servers started!")
+        else:
+            logger.info("All servers started!")
 
-    def stop_servers(self):
+    def __stop_servers(self):
         """
         Stops all SiLA 2 servers
         """
         logger.debug("Shutting down servers...")
-        for server in self.servers:
-            server.stop()
+        for server in self.__servers:
+            try:
+                server.stop()
+            except RuntimeError as err:
+                logger.warning(f"Could not stop server {server.server_name} ({server.server_uuid})", exc_info=err)
         logger.info("Done!")
 
-    def create_servers(self):
+    def __create_servers(self):
         """
         Creates a corresponding SiLA 2 server for every device connected to the bus
         """
+        logger.debug("Creating SiLA 2 servers...")
 
-        servers = []
-        # common args for all servers
-        server_type = "TestServer"
+        self.__servers = []
 
-        # ---------------------------------------------------------------------
-        # pumps
-        for pump in self.system.pumps:
-            server_name = pump.name.replace("_", " ")
+        for device in self.__system.all_devices:
 
-            if pump.is_peristaltic_pump:
-                logger.warning(
-                    f"Cannot create SiLA 2 server for pump {pump.name} because peristaltic pumps are not yet supported!"
-                )
-                continue
+            logger.info(f"Creating server for {device}")
 
-            from qmixsdk import qmixpump
+            # common args for all servers
+            common_args = {
+                "server_name": device.name.replace("_", " "),
+                "server_type": "TestServer",
+                "server_uuid": ServerConfiguration(device.name, self.__system.device_config.name).server_uuid,
+            }
 
-            if isinstance(pump, qmixpump.ContiFlowPump):
-                from sila_cetoni.pumps.contiflowpumps.sila.contiflowpump_service.server import Server
-
-                server = Server(
-                    pump=pump,
-                    server_name=server_name,
-                    server_type=server_type,
-                    server_uuid=Config(pump.name, self.system.device_config.name).server_uuid,
-                )
-            else:
+            server: SilaServer
+            if device.device_type == "pump":
+                pump: CetoniPumpDevice = device
                 from sila_cetoni.pumps.syringepumps.sila.syringepump_service import Server
 
                 server = Server(
-                    pump=pump,
+                    pump=pump.device_handle,
                     valve=pump.valves[0] if len(pump.valves) > 0 else None,
                     io_channels=pump.io_channels,
-                    battery=self.system.battery,
-                    server_name=server_name,
-                    server_type=server_type,
-                    server_uuid=Config(pump.name, self.system.device_config.name).server_uuid,
+                    battery=self.__system.battery,
+                    **common_args,
                 )
-            servers += [server]
+            elif device.device_type == "contiflow_pump":
+                pump: CetoniPumpDevice = device
+                from sila_cetoni.pumps.contiflowpumps.sila.contiflowpump_service.server import Server
 
-        # ---------------------------------------------------------------------
-        # axis systems
-        for axis_system in self.system.axis_systems:
-            server_name = axis_system.name.replace("_", " ")
+                server = Server(pump=pump.device_handle, **common_args)
+            elif device.device_type == "peristaltic_pump":
+                pump: CetoniPumpDevice = device
+                # from sila_cetoni.pumps.peristalticpumps.sila.peristalticpump_service.server import Server
 
-            from sila_cetoni.motioncontrol.axis.sila.axis_service.server import Server
+                # server = Server(pump=pump.device_handle, **common_args)
+                logger.info(f"No support for peristaltic pumps yet! Skipping creation of SiLA Server for {pump.name}.")
+                continue
+            elif device.device_type == "axis_system":
+                axis_system: CetoniAxisSystemDevice = device
 
-            server = Server(
-                axis_system=axis_system,
-                io_channels=axis_system.io_channels,
-                device_properties=axis_system.properties,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(axis_system.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
+                from sila_cetoni.motioncontrol.axis.sila.axis_service.server import Server
 
-        # ---------------------------------------------------------------------
-        # valves
-        for valve_device in self.system.valves:
-            server_name = valve_device.name.replace("_", " ")
+                server = Server(
+                    axis_system=axis_system.device_handle,
+                    io_channels=axis_system.io_channels,
+                    device_properties=axis_system.device_properties,
+                    **common_args,
+                )
+            elif device.device_type == "valve":
+                valve_device: CetoniValveDevice = device
 
-            from sila_cetoni.valves.sila.valve_service.server import Server
+                from sila_cetoni.valves.sila.valve_service.server import Server
 
-            server = Server(
-                valves=valve_device.valves,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(valve_device.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
+                server = Server(valves=valve_device.valves, **common_args)
+            elif device.device_type == "controller":
+                controller_device: CetoniControllerDevice = device
 
-        # ---------------------------------------------------------------------
-        # controller
-        for controller_device in self.system.controllers:
-            server_name = controller_device.name.replace("_", " ")
+                from sila_cetoni.controllers.sila.controllers_service.server import Server
 
-            from sila_cetoni.controllers.sila.controllers_service.server import Server
+                server = Server(controller_channels=controller_device.controller_channels, **common_args)
+            elif device.device_type == "io":
+                io_device: CetoniIODevice = device
 
-            server = Server(
-                controller_channels=controller_device.controller_channels,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(controller_device.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
+                from sila_cetoni.io.sila.io_service.server import Server
 
-        # ---------------------------------------------------------------------
-        # I/O
-        for io_device in self.system.io_devices:
-            server_name = io_device.name.replace("_", " ")
+                server = Server(io_channels=io_device.io_channels, **common_args)
+            elif device.device_type == "balance":
+                balance: BalanceDevice = device
 
-            from sila_cetoni.io.sila.io_service.server import Server
+                from sila_cetoni.balance.sila.balance_service.server import Server
 
-            server = Server(
-                io_channels=io_device.io_channels,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(io_device.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
+                server = Server(balance=balance.device, **common_args)
+            elif device.device_type == "lcms":
+                lcms: LCMSDevice = device
 
-        # ---------------------------------------------------------------------
-        # balance
-        for balance in self.system.balances:
-            server_name = balance.name.replace("_", " ")
+                from sila_cetoni.lcms.sila.spectrometry_service.server import Server
 
-            from sila_cetoni.balance.sila.balance_service.server import Server
+                server = Server(lcms=lcms.device, **common_args)
+            elif device.device_type == "heating_cooling":
+                heating_cooling_device: HeatingCoolingDevice = device
 
-            server = Server(
-                balance=balance.device,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(balance.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
+                from sila_cetoni.heating_cooling.sila.heating_cooling_service.server import Server
 
-        # ---------------------------------------------------------------------
-        # lcms
-        lcms = self.system.lcms
-        if lcms is not None:
-            server_name = lcms.name.replace("_", " ")
+                server = Server(temp_controller=heating_cooling_device.device, **common_args)
+            elif device.device_type == "purification":
+                purification_device: PurificationDevice = device
 
-            from sila_cetoni.lcms.sila.spectrometry_service.server import Server
+                from sila_cetoni.purification.sila.purification_service.server import Server
 
-            server = Server(
-                lcms=lcms.device,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(lcms.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
+                server = Server(device=purification_device.device, **common_args)
+            else:
+                logger.warning(f"Unhandled device type {device.device_type} of device {device}")
+                continue
 
-        # ---------------------------------------------------------------------
-        # heating_cooling
-        for heating_cooling_device in self.system.heating_cooling_devices:
-            server_name = heating_cooling_device.name.replace("_", " ")
+            self.__servers += [server]
 
-            from sila_cetoni.heating_cooling.sila.heating_cooling_service.server import Server
-
-            server = Server(
-                temp_controller=heating_cooling_device.device,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(heating_cooling_device.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
-
-        # ---------------------------------------------------------------------
-        # purification
-        for purification_device in self.system.purification_devices:
-            server_name = purification_device.name.replace("_", " ")
-
-            from sila_cetoni.purification.sila.purification_service.server import Server
-
-            server = Server(
-                device=purification_device.device,
-                server_name=server_name,
-                server_type=server_type,
-                server_uuid=Config(purification_device.name, self.system.device_config.name).server_uuid,
-            )
-            servers += [server]
-
-        return servers
+        logger.debug(f"Done creating servers: {[(server.server_name, server) for server in self.__servers]}")
