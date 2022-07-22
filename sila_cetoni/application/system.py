@@ -335,7 +335,10 @@ class ApplicationSystem(ApplicationSystemBase):
         for balance in balances:
             if balance.manufacturer == "Sartorius":
                 logger.debug(f"Connecting to balance on port {balance.port!r}")
-                balance.device = sartorius_balance.SartoriusBalance(balance.port)
+                SartoriusBalance = (
+                    sartorius_balance.SartoriusBalanceSim if balance.simulated else sartorius_balance.SartoriusBalance
+                )
+                balance.device = SartoriusBalance(balance.port)
 
         if scan:
             logger.debug("Looking for balances")
