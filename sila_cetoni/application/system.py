@@ -489,7 +489,8 @@ class ApplicationSystem(ApplicationSystemBase):
         for device in devices:
             if device.manufacturer == "2mag":
                 logger.debug(f"Connecting to stirring device on port {device.port!r}")
-                device.device = twomag_mixdrive.MIXdrive(device.port)
+                MIXdrive = twomag_mixdrive.MIXdriveSim if device.simulated else twomag_mixdrive.MIXdrive
+                device.device = MIXdrive(device.port)
 
         if scan:
             logger.debug("Looking for stirring devices")
