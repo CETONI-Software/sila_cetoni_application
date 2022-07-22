@@ -45,6 +45,7 @@ if TYPE_CHECKING:
         HeatingCoolingDevice,
         LCMSDevice,
         PurificationDevice,
+        StirringDevice,
     )
 
 from .application_configuration import ApplicationConfiguration
@@ -256,6 +257,12 @@ class Application(Singleton):
                 from sila_cetoni.purification.sila.purification_service.server import Server
 
                 server = Server(device=purification_device.device, **common_args)
+            elif device.device_type == "stirring":
+                stirring_device: StirringDevice = device
+
+                from sila_cetoni.stirring.sila.stirring_service.server import Server
+
+                server = Server(device=stirring_device.device, **common_args)
             else:
                 logger.warning(f"Unhandled device type {device.device_type} of device {device}")
                 continue

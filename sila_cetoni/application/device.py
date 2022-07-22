@@ -266,6 +266,8 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
             return super().__new__(LCMSDevice)
         elif device_type == "purification":
             return super().__new__(PurificationDevice)
+        elif device_type == "stirring":
+            return super().__new__(StirringDevice)
         else:
             raise RuntimeError(f"Unknown device type {device_type!r} for {cls.__name__!r}")
 
@@ -396,3 +398,14 @@ try:
 
 except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.purification module! No support for purification devices.")
+
+try:
+    from sila_cetoni.stirring.device_drivers import StirringDeviceInterface
+
+    class StirringDevice(ThirdPartyDevice[StirringDeviceInterface]):
+        """
+        Simple class to represent a stirring device
+        """
+
+except (ModuleNotFoundError, ImportError):
+    logger.warning(f"Could not find sila_cetoni.stirring module! No support for stirring devices.")

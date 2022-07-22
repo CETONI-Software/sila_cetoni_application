@@ -47,8 +47,16 @@ from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
 from .application_configuration import ApplicationConfiguration
 from .cetoni_device_configuration import CetoniDeviceConfiguration
 from .configuration import DeviceConfiguration
+from .device import (
+    BalanceDevice,
+    CetoniPumpDevice,
+    Device,
+    HeatingCoolingDevice,
+    LCMSDevice,
+    PurificationDevice,
+    StirringDevice,
+)
 from .server_configuration import ServerConfiguration
-from .device import BalanceDevice, CetoniPumpDevice, Device, HeatingCoolingDevice, LCMSDevice, PurificationDevice
 from .singleton import ABCSingleton
 
 logger = logging.getLogger(__name__)
@@ -238,7 +246,9 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                     logger.debug(f"Setting device {device} operational")
                     device.set_operational()
                     if isinstance(device, CetoniPumpDevice):
-                        drive_pos_counter = ServerConfiguration(device.name, self._config.name).pump_drive_position_counter
+                        drive_pos_counter = ServerConfiguration(
+                            device.name, self._config.name
+                        ).pump_drive_position_counter
                         if drive_pos_counter is not None and not device.device_handle.is_position_sensing_initialized():
                             logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
                             device.device_handle.restore_position_counter_value(drive_pos_counter)
@@ -270,6 +280,7 @@ class ApplicationSystem(ApplicationSystemBase):
         self.__create_lcms(self._config.scan_devices)
         self.__create_heating_cooling_devices(self._config.scan_devices)
         self.__create_purification_devices(self._config.scan_devices)
+        self.__create_stirring_devices(self._config.scan_devices)
 
         logger.debug(f"Created devices {self._config.devices}")
 
@@ -454,3 +465,41 @@ class ApplicationSystem(ApplicationSystemBase):
 
         if scan:
             logger.warning("Automatic searching for purification devices is not supported at the moment!")
+
+    # -------------------------------------------------------------------------
+    # Stirring
+    def __create_stirring_devices(self, scan: bool = False):
+        """
+        Looks up all stirring devices from the current configuration and tries to auto-detect more devices if`scan` is
+        `True`
+        """
+
+        devices = list(filter(lambda d: d.device_type == "stirring", self._config.devices))
+
+        try:
+            from sila_cetoni.stirring.device_drivers import twomag_mixdrive
+        except (ModuleNotFoundError, ImportError) as err:
+            msg = "Could not import sila_cetoni.stirring package - no support for stirring devices!"
+            if len(devices) > 0:
+                raise RuntimeError(msg)
+            else:
+                logger.warning(msg, exc_info=err)
+            return
+
+        for device in devices:
+            if device.manufacturer == "2mag":
+                logger.debug(f"Connecting to stirring device on port {device.port!r}")
+                device.device = twomag_mixdrive.MIXdrive(device.port)
+
+        if scan:
+            logger.debug("Looking for stirring devices")
+
+            dev = twomag_mixdrive.MIXdrive()
+            try:
+                dev.open()
+                logger.debug(f"Found stirring device on port {dev.port!r}")
+                device = StirringDevice(dev.name, {"type": "stirring", "manufacturer": "2mag", "port": dev.port})
+                device.device = dev
+                self._config.devices += [device]
+            except twomag_mixdrive.MIXdriveNotFoundException:
+                pass

@@ -119,7 +119,8 @@
                         "balance",
                         "heating_cooling",
                         "lcms",
-                        "purification"
+                        "purification",
+                        "stirring"
                     ]
                 },
                 "manufacturer": {
@@ -128,7 +129,8 @@
                     "enum": [
                         "Sartorius",
                         "Huber",
-                        "Shimadzu"
+                        "Shimadzu",
+                        "2mag"
                     ]
                 },
                 "simulated": {
@@ -221,6 +223,24 @@
                             "manufacturer": {
                                 "enum": [
                                     "Sartorius"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "stirring"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "manufacturer": {
+                                "enum": [
+                                    "2mag"
                                 ]
                             }
                         }
