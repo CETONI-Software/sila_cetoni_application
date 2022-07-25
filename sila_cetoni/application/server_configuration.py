@@ -26,10 +26,10 @@ class ServerConfiguration(Configuration):
 
     def __init__(self, name: str, subdir: str = "") -> None:
         """
-        Construct a `Config` that will read from / write to a config file with the given `name`
+        Construct a `ServerConfiguration` that will read from / write to a config file with the given `name`
 
             :param name: Name of the config file
-            :param subdir: (optional) The sub directory to store the config file in
+            :param subdir: (optional) The subdirectory to store the config file in
         """
         super().__init__(name, os.path.join(self.__config_dir(subdir), name + ".ini"))
 
