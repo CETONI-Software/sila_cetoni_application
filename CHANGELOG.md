@@ -18,19 +18,43 @@ Types of changes
 
 ## Unreleased
 
+### Added
+
+- Support purification devices with sila_cetoni_purification
+- Support stirring devices with sila_cetoni_stirring
+- `--scan`/`--no-scan` CLI options to force scanning for devices like serial devices (the default is to not scan for devices)
+- JSON configuration file concept (similar to CETONI device configurations but hand-written)
+  - `sila-cetoni` now **requires** a configuration file in JSON format that describes the type and number of devices to start SiLA servers for
+  - There is a distinction between CETONI devices and devices from other vendors (like Sartorius, Huber, etc.)
+  - CETONI devices still require a CETONI device configuration folder, i.e. if you have CETONI devices in your system you need to specify the corresponding device config folder in the JSON config
+  - All third-party devices are configured one by one and require at least a type and a manufacturer; depending on the device type you'll also need to specify device specific configuration options like a serial port or a server URL
+- Third-party devices can be simulated now
+  - There is an optional `simulated` property for devices in the JSON config file
+  - Support for simulated Sartorius balances
+  - Support for simulated Huber Chillers
+  - Support for simulated Sartorius Arium purification devices
+  - Support for simulated 2mag MIXdrive stirring devices
+
+### Changed
+
+- `sila-cetoni` can now be run completely without CETONI SDK
+- Use the server name as the name for `ServerConfiguration`
 
 ## v1.1.0
 
 ### Added
+
 - `~` path constructs in the `CETONI_SDK_PATH` environment variable can now be properly expanded
 - Add CLI option to specify the IP address the servers should run on
 - Add CLI option to force regeneration of the self-signed certificates
 - New `HeatingCoolingDevice` device class for devices of sila_cetoni_heating_cooling
 
 ### Changed
+
 - Bump sila2 to v0.8.2
 
 ### Fixed
+
 - Fix dependencies in pyproject.toml
 - Catch possible `TimeoutError` when starting the servers
 
@@ -41,5 +65,6 @@ First release of sila_cetoni
 This is the main application plugin required to run sila_cetoni
 
 ### Added
+
 - Main application logic for running sila_cetoni with a CETONI device configuration and without a device configuration
   for non-CETONI devices
