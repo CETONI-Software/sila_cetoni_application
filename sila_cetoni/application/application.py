@@ -128,7 +128,7 @@ class Application(Singleton):
         port = self.__config.server_base_port
         for server in self.__servers:
             try:
-                config = ServerConfiguration(server.server_name.replace(" ", "_"), self.__system.device_config.name)
+                config = ServerConfiguration(server.server_name, self.__system.device_config.name)
                 if self.__config.regenerate_certificates:
                     config.generate_self_signed_certificate(self.__config.server_ip)
                 server.start(
@@ -174,10 +174,11 @@ class Application(Singleton):
             logger.info(f"Creating server for {device}")
 
             # common args for all servers
+            server_name = device.name.replace("_", " ")
             common_args = {
-                "server_name": device.name.replace("_", " "),
+                "server_name": server_name,
                 "server_type": "TestServer",
-                "server_uuid": ServerConfiguration(device.name, self.__system.device_config.name).server_uuid,
+                "server_uuid": ServerConfiguration(server_name, self.__system.device_config.name).server_uuid,
             }
 
             server: SilaServer

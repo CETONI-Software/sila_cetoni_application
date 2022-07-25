@@ -246,8 +246,9 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                     logger.debug(f"Setting device {device} operational")
                     device.set_operational()
                     if isinstance(device, CetoniPumpDevice):
+                        device: CetoniPumpDevice # typing
                         drive_pos_counter = ServerConfiguration(
-                            device.name, self._config.name
+                            device.name.replace("_", " "), self._config.name
                         ).pump_drive_position_counter
                         if drive_pos_counter is not None and not device.device_handle.is_position_sensing_initialized():
                             logger.debug(f"Restoring drive position counter: {drive_pos_counter}")

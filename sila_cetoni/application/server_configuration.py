@@ -28,7 +28,7 @@ class ServerConfiguration(Configuration):
         """
         Construct a `ServerConfiguration` that will read from / write to a config file with the given `name`
 
-            :param name: Name of the config file
+            :param name: Name of the config file (should be the same as the server's name that this config is for)
             :param subdir: (optional) The subdirectory to store the config file in
         """
         super().__init__(name, os.path.join(self.__config_dir(subdir), name + ".ini"))
