@@ -418,7 +418,8 @@ class ApplicationSystem(ApplicationSystemBase):
         for device in devices:
             if device.manufacturer == "Huber":
                 logger.debug(f"Connecting to chiller on port {device.port!r}")
-                device.device = huber_chiller.HuberChiller(device.port)
+                HuberChiller = huber_chiller.HuberChillerSim if device.simulated else huber_chiller.HuberChiller
+                device.device = HuberChiller(device.port)
 
         if scan:
             logger.debug("Looking for heating/cooling devices")
