@@ -22,7 +22,7 @@ class ServerConfiguration(Configuration):
 
     __parser: ConfigParser
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self, name: str, subdir: str = "") -> None:
         """
@@ -76,9 +76,11 @@ class ServerConfiguration(Configuration):
 
         if version < 1:
             self.__add_default_values_v1()
-        # if version < 2:
-        #     self.__add_default_values_v2()
+        if version < 2:
+            self.__add_default_values_v2()
         self.write()
+
+    # v0 ---------------------------------------------------------------------
 
     def __add_default_values(self):
         """
@@ -88,12 +90,6 @@ class ServerConfiguration(Configuration):
         self.__parser["server"]["uuid"] = str(self.__unique_server_uuid())
         self.__parser["pump"] = {}
         self.__parser["axis_position_counters"] = {}
-
-    def __add_default_values_v1(self):
-        """
-        Sets all necessary entries to default values for version 1 of the config file
-        """
-        self.generate_self_signed_certificate(LOCAL_IP)
 
     def generate_self_signed_certificate(self, ip: str):
         """
@@ -114,6 +110,14 @@ class ServerConfiguration(Configuration):
         os.makedirs(os.path.dirname(self._file_path), exist_ok=True)
         with open(self._file_path, "w") as config_file:
             self.__parser.write(config_file)
+
+    # v1 ---------------------------------------------------------------------
+
+    def __add_default_values_v1(self):
+        """
+        Sets all necessary entries to default values for version 1 of the config file
+        """
+        self.generate_self_signed_certificate(LOCAL_IP)
 
     @property
     def server_uuid(self) -> Optional[str]:
@@ -145,14 +149,17 @@ class ServerConfiguration(Configuration):
 
     @pump_drive_position_counter.setter
     def pump_drive_position_counter(self, drive_position_counter: int):
+        """
+        Set the pump drive position counter if this config is for a pump device
+        """
         self.__parser["pump"]["drive_position_counter"] = str(drive_position_counter)
 
     @property
     def axis_position_counters(self) -> Optional[Dict[str, int]]:
         """
         Returns the axis position counters if this config is for an axis device
-        The keys of the returned dictionary are the axis names and the values are
-        the position counter values.
+
+        The keys of the returned dictionary are the axis names and the values are the position counter values.
         """
         if self.__parser.has_section("axis_position_counters"):
             return dict(self.__parser["axis_position_counters"])
@@ -161,5 +168,46 @@ class ServerConfiguration(Configuration):
 
     @axis_position_counters.setter
     def axis_position_counters(self, position_counters: Dict[str, int]):
+        """
+        Set the axis position counters if this config is for an axis device
+
+        The keys of the dictionary need to be the axis names and the values are the position counter values.
+        """
         logger.info(position_counters)
         self.__parser["axis_position_counters"] = position_counters
+
+    # v2 ---------------------------------------------------------------------
+
+    def __add_default_values_v2(self):
+        """
+        Sets all necessary entries to default values for version 2 of the config file
+        """
+        self.__parser["stirring"] = {}
+
+    @property
+    def stirring_rpm(self) -> Optional[float]:
+        """
+        Returns the stirring RPM if this config is for a stirring device
+        """
+        return self.__parser["stirring"].getfloat("rpm")
+
+    @stirring_rpm.setter
+    def stirring_rpm(self, rpm: float):
+        """
+        Set the stirring RPM if this config is for a stirring device
+        """
+        self.__parser["stirring"]["rpm"] = str(rpm)
+
+    @property
+    def stirring_power(self) -> Optional[float]:
+        """
+        Returns the stirring power if this config is for a stirring device
+        """
+        return self.__parser["stirring"].getfloat("power")
+
+    @stirring_power.setter
+    def stirring_power(self, power: float):
+        """
+        Set the stirring power if this config is for a stirring device
+        """
+        self.__parser["stirring"]["power"] = str(power)
