@@ -18,6 +18,10 @@ Types of changes
 
 ## Unreleased
 
+## v1.2.0
+
+Sync with sila_cetoni v1.2.0
+
 ### Added
 
 - Support purification devices with sila_cetoni_purification
