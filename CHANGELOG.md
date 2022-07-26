@@ -18,6 +18,22 @@ Types of changes
 
 ## Unreleased
 
+## v1.3.0
+
+Sync with sila_cetoni v1.3.0
+
+### Added
+
+- `ServerConfiguration` now saves the port that a server was started on
+
+### Changed
+
+- A server will be tried to be started on the same port as last time before falling back to the port calculated from the base port and the index of the server in the list of all servers
+
+### Fixed
+
+- The `-v/--version` CLI option of the main application no works as expected
+
 ## v1.2.0
 
 Sync with sila_cetoni v1.2.0
