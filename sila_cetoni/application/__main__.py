@@ -1,5 +1,3 @@
-__version__ = "0.1.0"
-
 import logging
 import os
 import sys
@@ -20,7 +18,7 @@ except ModuleNotFoundError:
 
 from .application import Application
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 app = typer.Typer()
 

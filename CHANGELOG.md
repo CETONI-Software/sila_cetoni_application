@@ -18,6 +18,12 @@ Types of changes
 
 ## Unreleased
 
+## v1.3.1
+
+### Fixed
+
+- `ModuleNotFoundError`s when qmixsdk or another sila_cetoni module could not be found
+
 ## v1.3.0
 
 Sync with sila_cetoni v1.3.0
