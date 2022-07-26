@@ -28,16 +28,17 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import threading
 import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 # import qmixsdk
 try:
     from qmixsdk import qmixbus
+
+    from .device import CetoniPumpDevice
 except (ModuleNotFoundError, ImportError):
     pass
 
@@ -45,19 +46,14 @@ from sila_cetoni.core.device_drivers.abc import BatteryInterface
 from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
 
 from .application_configuration import ApplicationConfiguration
-from .cetoni_device_configuration import CetoniDeviceConfiguration
 from .configuration import DeviceConfiguration
-from .device import (
-    BalanceDevice,
-    CetoniPumpDevice,
-    Device,
-    HeatingCoolingDevice,
-    LCMSDevice,
-    PurificationDevice,
-    StirringDevice,
-)
+from .device import Device
 from .server_configuration import ServerConfiguration
 from .singleton import ABCSingleton
+
+if TYPE_CHECKING:
+    from .device import PurificationDevice
+    from .cetoni_device_configuration import CetoniDeviceConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +242,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                     logger.debug(f"Setting device {device} operational")
                     device.set_operational()
                     if isinstance(device, CetoniPumpDevice):
-                        device: CetoniPumpDevice # typing
+                        device: CetoniPumpDevice  # typing
                         drive_pos_counter = ServerConfiguration(
                             device.name.replace("_", " "), self._config.name
                         ).pump_drive_position_counter
@@ -269,6 +265,8 @@ class ApplicationSystem(ApplicationSystemBase):
 
         cetoni_device_config_path = self._config.cetoni_device_config_path
         if cetoni_device_config_path is not None:
+            from .cetoni_device_configuration import CetoniDeviceConfiguration
+
             self.__cetoni_application_system = CetoniApplicationSystem(
                 CetoniDeviceConfiguration(cetoni_device_config_path.name, cetoni_device_config_path)
             )
@@ -325,6 +323,8 @@ class ApplicationSystem(ApplicationSystemBase):
 
         try:
             from sila_cetoni.balance.device_drivers import sartorius_balance
+
+            from .device import BalanceDevice
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.balance package - no support for balance devices!"
             if len(balances) > 0:
@@ -370,6 +370,8 @@ class ApplicationSystem(ApplicationSystemBase):
 
         try:
             from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
+
+            from .device import LCMSDevice
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.lcms package - no support for LC/MS devices!"
             if len(devices) > 0:
@@ -408,6 +410,8 @@ class ApplicationSystem(ApplicationSystemBase):
 
         try:
             from sila_cetoni.heating_cooling.device_drivers import huber_chiller
+
+            from .device import HeatingCoolingDevice
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.heating_cooling package - no support for heating/cooling devices!"
             if len(devices) > 0:
@@ -451,7 +455,6 @@ class ApplicationSystem(ApplicationSystemBase):
 
         try:
             from sila_cetoni.purification.device_drivers import sartorius_arium
-
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.purification package - no support for purification devices!"
             if devices:
@@ -483,6 +486,8 @@ class ApplicationSystem(ApplicationSystemBase):
 
         try:
             from sila_cetoni.stirring.device_drivers import twomag_mixdrive
+
+            from .device import StirringDevice
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.stirring package - no support for stirring devices!"
             if len(devices) > 0:
