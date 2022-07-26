@@ -30,7 +30,7 @@ import concurrent.futures
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Dict, List
 
 from sila2.server import SilaServer
 
@@ -125,27 +125,43 @@ class Application(Singleton):
         Starts all SiLA 2 servers
         """
         logger.debug("Starting SiLA 2 servers...")
-        port = self.__config.server_base_port
+        used_ports: Dict[int, SilaServer] = dict()
+        i = 0
         for server in self.__servers:
             try:
-                config = ServerConfiguration(server.server_name, self.__system.device_config.name)
+                server_config = ServerConfiguration(server.server_name, self.__system.device_config.name)
                 if self.__config.regenerate_certificates:
-                    config.generate_self_signed_certificate(self.__config.server_ip)
+                    server_config.generate_self_signed_certificate(self.__config.server_ip)
+
+                port = self.__config.server_base_port + i
+                if server_config.server_port is not None:
+                    if server_config.server_port in used_ports:
+                        logger.warning(
+                            f"Cannot start server {server.server_name!r} on port {server_config.server_port} because "
+                            f"this port is already used by {used_ports[server_config.server_port].server_name!r}! "
+                            f"Using port {port} instead."
+                        )
+                    else:
+                        port = server_config.server_port
+
                 server.start(
                     self.__config.server_ip,
                     port,
-                    private_key=config.ssl_private_key,
-                    cert_chain=config.ssl_certificate,
-                    ca_for_discovery=config.ssl_certificate,
+                    private_key=server_config.ssl_private_key,
+                    cert_chain=server_config.ssl_certificate,
+                    ca_for_discovery=server_config.ssl_certificate,
                 )
+                server_config.server_port = port
+                server_config.write()
+                used_ports[port] = server
                 logger.info(
-                    f"Starting SiLA 2 server {server.server_name!r} on {self.__config.server_ip}:{port} (UUID: {config.server_uuid})"
+                    f"Starting SiLA 2 server {server.server_name!r} on {self.__config.server_ip}:{port} (UUID: {server_config.server_uuid})"
                 )
             except (RuntimeError, concurrent.futures.TimeoutError) as err:
                 logger.critical(err, exc_info=err)
                 self.stop()
                 break
-            port += 1
+            i += 1
         else:
             logger.info("All servers started!")
 

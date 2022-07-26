@@ -130,6 +130,20 @@ class ServerConfiguration(Configuration):
         return self.__parser["server"].get("uuid")
 
     @property
+    def server_port(self) -> Optional[int]:
+        """
+        The port of the SiLA Server as read from the config file
+        """
+        return self.__parser["server"].getint("port")
+
+    @server_port.setter
+    def server_port(self, server_port: int):
+        """
+        Set the port of the SiLA Server
+        """
+        self.__parser["server"]["port"] = str(server_port)
+
+    @property
     def ssl_private_key(self) -> Optional[bytes]:
         """
         The private key for the SSL certificate
