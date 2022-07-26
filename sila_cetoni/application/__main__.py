@@ -20,7 +20,15 @@ except ModuleNotFoundError:
 
 from .application import Application
 
+__version__ = "1.2.0"
+
 app = typer.Typer()
+
+
+def show_version(value: bool):
+    if value:
+        print(f"sila-cetoni v{__version__}")
+        raise typer.Exit()
 
 
 _LOGGING_FORMAT = (
@@ -47,7 +55,12 @@ def set_logging_level(log_level: str):
 )
 def main(
     version: Optional[bool] = typer.Option(
-        None, "--version", "-v", help="Show the application's version number and exit"
+        None,
+        "--version",
+        "-v",
+        callback=show_version,
+        is_eager=True,
+        help="Show the application's version number and exit",
     ),
     log_level: str = typer.Option(
         ApplicationConfiguration.DEFAULT_LOG_LEVEL,  # or use "error" for less output
