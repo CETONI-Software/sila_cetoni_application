@@ -33,6 +33,9 @@ class ServerConfiguration(Configuration):
         """
         super().__init__(name, os.path.join(self.__config_dir(subdir), name + ".ini"))
 
+    def __del__(self):
+        self.write()
+
     @staticmethod
     def __config_dir(subdir: str = "") -> str:
         """
