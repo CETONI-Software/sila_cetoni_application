@@ -18,6 +18,13 @@ Types of changes
 
 ## Unreleased
 
+## v1.4.1
+
+### Fixed
+
+- Fix dependencies in pyproject.toml
+- Fix log file handling when `log_file_dir` is only set in the JSON config but not via CLI option
+
 ## v1.4.0
 
 Sync with sila_cetoni v1.4.0

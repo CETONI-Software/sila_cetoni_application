@@ -1,6 +1,6 @@
 [project]
 name = "sila_cetoni_application"
-version = "1.4.0"
+version = "1.4.1"
 description = "CETONI main application for all SiLA 2 implementations"
 readme = "README.md"
 authors = [
