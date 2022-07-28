@@ -18,6 +18,13 @@ Types of changes
 
 ## Unreleased
 
+## v1.4.2
+
+### Fixed
+
+- Non-present `log_file_dir` in the JSON config will not cause a crash any more
+- Detection of battery
+
 ## v1.4.1
 
 ### Fixed
