@@ -78,7 +78,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
                 self.__server_ip = config.get("server_ip", self.DEFAULT_SERVER_IP)
                 self.__server_base_port = int(config.get("server_base_port", self.DEFAULT_SERVER_BASE_PORT))
                 self.__log_level = config.get("log_level", self.DEFAULT_LOG_LEVEL)
-                self.__log_file_dir = config.get("log_file_dir", None)
+                self.__log_file_dir = Path(config.get("log_file_dir", None))
                 self.__regenerate_certificates = config.get(
                     "regenerate_certificates", self.DEFAULT_REGENERATE_CERTIFICATES
                 )
