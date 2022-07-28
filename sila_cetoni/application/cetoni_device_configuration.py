@@ -85,7 +85,10 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
 
         logger.debug(f"Found the following devices: {self._devices}")
 
-        self._has_battery = bool(getattr(root, "SiLA.BatteryPowered", False))
+        try:
+            self._has_battery = bool(root.SiLA.BatteryPowered)
+        except AttributeError:
+            self._has_battery = False
 
     def _parse_plugin(self, plugin_name: str):
         """

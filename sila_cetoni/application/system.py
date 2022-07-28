@@ -301,7 +301,7 @@ class ApplicationSystem(ApplicationSystemBase):
 
     @property
     def battery(self) -> Optional[BatteryInterface]:
-        return self.__cetoni_application_system.battery
+        return self.__cetoni_application_system.battery if self.__cetoni_application_system is not None else None
 
     @property
     def all_devices(self) -> List[Device]:
