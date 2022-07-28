@@ -137,10 +137,14 @@ def main(
     def log_file_name(dir: Path, log_level: str) -> Path:
         return dir.joinpath(f"sila_cetoni-{log_level.lower()}-{strftime('%Y-%m-%d_%H-%M-%S')}.log")
 
-    log_file_handler: logging.FileHandler
-    if log_file_dir is not None:
+    def make_log_file_handler(log_file_dir: Path, log_level: str) -> logging.FileHandler:
         log_file_handler = logging.FileHandler(log_file_name(log_file_dir, log_level))
         log_file_handler.setFormatter(logging.Formatter(_LOGGING_FORMAT.format(thread_name_len=60)))
+        return log_file_handler
+
+    log_file_handler: logging.FileHandler = None
+    if log_file_dir is not None:
+        log_file_handler = make_log_file_handler(log_file_dir, log_level)
         logging.getLogger().addHandler(log_file_handler)
     logging.info(f"Starting log for {sys.executable} with args {sys.argv}")
 
@@ -160,10 +164,10 @@ def main(
         logging.info(f"Setting log level {application.config.log_level!r} from '{config_file}'")
         set_logging_level(application.config.log_level)
         if application.config.log_file_dir is not None:
-            log_file_handler.close()
-            log_file_handler.baseFilename = os.path.abspath(
-                log_file_name(application.config.log_file_dir, application.config.log_level)
-            )
+            if log_file_handler is not None:
+                logging.getLogger().removeHandler(log_file_handler)
+            log_file_handler = make_log_file_handler(application.config.log_file_dir, application.config.log_level)
+            logging.getLogger().addHandler(log_file_handler)
 
     if not application.run():
         raise typer.Abort()
