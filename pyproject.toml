@@ -19,7 +19,6 @@ classifiers = [
 requires-python = ">=3.7"
 dependencies = [
     "coloredlogs",
-    "json",
     "jsonschema",
     "pyserial",
     "sila2[codegen]==0.8.2",
