@@ -78,7 +78,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
                 self.__server_ip = config.get("server_ip", self.DEFAULT_SERVER_IP)
                 self.__server_base_port = int(config.get("server_base_port", self.DEFAULT_SERVER_BASE_PORT))
                 self.__log_level = config.get("log_level", self.DEFAULT_LOG_LEVEL)
-                self.__log_file_dir = Path(config.get("log_file_dir", None))
+                self.__log_file_dir = Path(config["log_file_dir"]) if "log_file_dir" in config else None
                 self.__regenerate_certificates = config.get(
                     "regenerate_certificates", self.DEFAULT_REGENERATE_CERTIFICATES
                 )
@@ -89,12 +89,10 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
 
     def __parse_devices(self, devices: Optional[List[Dict]]):
         logger.debug(f"JSON devices {devices}")
-        if devices is None:
-            self._devices = None
-            return
         self._devices = []
-        for device in devices:
-            self._devices.append(ThirdPartyDevice(device, devices[device]))
+        if devices is not None:
+            for device in devices:
+                self._devices.append(ThirdPartyDevice(device, devices[device]))
 
     def __str__(self) -> str:
         return (
