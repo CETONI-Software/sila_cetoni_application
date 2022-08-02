@@ -1,8 +1,7 @@
 import json
 import logging
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import jsonschema
 import jsonschema.exceptions
@@ -84,15 +83,17 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
                 )
                 self.__scan_devices = config.get("scan_devices", self.DEFAULT_SCAN_DEVICES)
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as err:
-            logger.critical(f"Configuration file {self._file_path} is invalid: {err}", exc_info=err)
-            sys.exit(1)
+            raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}", exc_info=err)
 
-    def __parse_devices(self, devices: Optional[List[Dict]]):
+    def __parse_devices(self, devices: Optional[Dict[str, Dict]]):
         logger.debug(f"JSON devices {devices}")
         self._devices = []
         if devices is not None:
             for device in devices:
-                self._devices.append(ThirdPartyDevice(device, devices[device]))
+                try:
+                    self._devices.append(ThirdPartyDevice(device, devices[device]))
+                except KeyError as err:
+                    raise RuntimeError(f"Failed to parse device {device!r}: Expected property {err} could not be found")
 
     def __str__(self) -> str:
         return (
