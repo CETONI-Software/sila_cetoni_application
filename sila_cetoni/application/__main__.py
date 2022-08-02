@@ -48,9 +48,7 @@ def set_logging_level(log_level: str):
 
 # -----------------------------------------------------------------------------
 # main program
-@app.callback(
-    invoke_without_command=True, no_args_is_help=False, context_settings={"help_option_names": ["-h", "--help"]}
-)
+@app.command(no_args_is_help=False, context_settings={"help_option_names": ["-h", "--help"]})
 def main(
     version: Optional[bool] = typer.Option(
         None,

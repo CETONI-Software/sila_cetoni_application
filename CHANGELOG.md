@@ -21,6 +21,7 @@ Types of changes
 ### Changed
 
 - Third-party device classes to only contain the properties they actually need
+- The main function now uses `@app.command` instead of `@app.callback`
 
 ### Fixed
 
