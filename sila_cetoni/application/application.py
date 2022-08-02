@@ -32,6 +32,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List
 
+import typer
 from sila2.server import SilaServer
 
 if TYPE_CHECKING:
@@ -71,6 +72,7 @@ class Application(Singleton):
     def __init__(self, config_file_path: Path):
 
         self.__config = ApplicationConfiguration(config_file_path.stem, config_file_path)
+        self.__servers = []
 
     @property
     def config(self) -> ApplicationConfiguration:
@@ -91,7 +93,12 @@ class Application(Singleton):
             the servers could not be started.
         """
         self.__system = ApplicationSystem(self.__config)
-        self.__system.start()
+        try:
+            self.__system.start()
+        except Exception as err:
+            logger.error(f"Failed to start application system", exc_info=err)
+            self.stop()
+            raise typer.Exit(1)
 
         self.__create_servers()
 
@@ -182,8 +189,6 @@ class Application(Singleton):
         Creates a corresponding SiLA 2 server for every device connected to the bus
         """
         logger.debug("Creating SiLA 2 servers...")
-
-        self.__servers = []
 
         for device in self.__system.all_devices:
 
