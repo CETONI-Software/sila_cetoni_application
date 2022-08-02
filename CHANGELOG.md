@@ -18,6 +18,15 @@ Types of changes
 
 ## Unreleased
 
+### Changed
+
+- Third-party device classes to only contain the properties they actually need
+
+### Fixed
+
+- Errors during the startup of the application are now caught and result in a graceful exit of the application
+- If parsing of the JSON config file fails, `RuntimeError`s will be generated with more descriptive error messages
+
 ## v1.4.2
 
 ### Fixed
