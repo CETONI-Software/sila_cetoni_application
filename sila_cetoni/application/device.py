@@ -279,12 +279,6 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
             json_data["manufacturer"],
             json_data.get("simulated", SCHEMA["definitions"]["Device"]["properties"]["simulated"]["default"]),
         )
-        if "port" in json_data:
-            self._port: str = json_data["port"]
-            ThirdPartyDevice.port = property(lambda s: s._port)
-        if "server_url" in json_data:
-            self._server_url: str = json_data["server_url"]
-            ThirdPartyDevice.server_url = property(lambda s: s._server_url)
 
     def __repr__(self) -> str:
         return (
@@ -350,6 +344,16 @@ try:
         Simple class to represent a balance device
         """
 
+        __port: str
+
+        def __init__(self, name: str, json_data: Dict) -> None:
+            super().__init__(name, json_data)
+            self.__port = json_data["port"]
+
+        @property
+        def port(self) -> str:
+            return self.__port
+
 except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.balance module! No support for balance devices.")
 
@@ -372,6 +376,16 @@ try:
         Simple class to represent a heating/cooling device
         """
 
+        __port: str
+
+        def __init__(self, name: str, json_data: Dict) -> None:
+            super().__init__(name, json_data)
+            self.__port = json_data["port"]
+
+        @property
+        def port(self) -> str:
+            return self.__port
+
 except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.heating_cooling module! No support for heating/cooling devices.")
 
@@ -383,14 +397,20 @@ try:
         Simple class to represent a purification device
         """
 
+        __server_url: str
         __trigger_port: str
 
         def __init__(self, name: str, json_data: Dict) -> None:
             super().__init__(name, json_data)
+            self.__server_url = json_data["server_url"]
             self.__trigger_port = json_data["trigger_port"]
 
         def __repr__(self) -> str:
             return super().__repr__() + f"\b, {self.__trigger_port!r})"
+
+        @property
+        def server_url(self) -> str:
+            return self.__server_url
 
         @property
         def trigger_port(self) -> str:
@@ -406,6 +426,16 @@ try:
         """
         Simple class to represent a stirring device
         """
+
+        __port: str
+
+        def __init__(self, name: str, json_data: Dict) -> None:
+            super().__init__(name, json_data)
+            self.__port = json_data["port"]
+
+        @property
+        def port(self) -> str:
+            return self.__port
 
 except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.stirring module! No support for stirring devices.")

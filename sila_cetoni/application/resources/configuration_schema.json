@@ -139,9 +139,11 @@
                     "default": false
                 },
                 "port": {
+                    "$comment": "Additional property that is very common, so we want to have intellisense help from editors like VS Code",
                     "$ref": "#/definitions/Port"
                 },
                 "server_url": {
+                    "$comment": "Additional property that is very common, so we want to have intellisense help from editors like VS Code",
                     "$ref": "#/definitions/ServerUrl"
                 }
             },
