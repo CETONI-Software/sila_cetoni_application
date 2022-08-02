@@ -18,6 +18,10 @@ Types of changes
 
 ## Unreleased
 
+## v1.5.0
+
+Sync with sila_cetoni v1.5.0
+
 ### Changed
 
 - Third-party device classes to only contain the properties they actually need
