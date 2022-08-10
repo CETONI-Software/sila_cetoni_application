@@ -18,6 +18,14 @@ Types of changes
 
 ## Unreleased
 
+## v1.6.0
+
+Sync with sila_cetoni v1.6.0
+
+### Added
+
+- Add option to automatically simulate missing devices
+
 ## v1.5.0
 
 Sync with sila_cetoni v1.5.0
