@@ -339,7 +339,14 @@ class ApplicationSystem(ApplicationSystemBase):
                 SartoriusBalance = (
                     sartorius_balance.SartoriusBalanceSim if balance.simulated else sartorius_balance.SartoriusBalance
                 )
-                balance.device = SartoriusBalance(balance.port)
+                try:
+                    balance.device = SartoriusBalance(balance.port)
+                except sartorius_balance.BalanceNotFoundException as err:
+                    if self._config.simulate_missing:
+                        logger.warning(
+                            f"Could not connect to balance on {balance.port}, setting device simulated", exc_info=err
+                        )
+                        balance.device = sartorius_balance.SartoriusBalanceSim(balance.port)
 
         if scan:
             logger.debug("Looking for balances")
@@ -422,9 +429,17 @@ class ApplicationSystem(ApplicationSystemBase):
 
         for device in devices:
             if device.manufacturer == "Huber":
-                logger.debug(f"Connecting to chiller on port {device.port!r}")
+                logger.debug(f"Connecting to heating/cooling device on port {device.port!r}")
                 HuberChiller = huber_chiller.HuberChillerSim if device.simulated else huber_chiller.HuberChiller
-                device.device = HuberChiller(device.port)
+                try:
+                    device.device = HuberChiller(device.port)
+                except huber_chiller.HuberChillerNotFoundException as err:
+                    if self._config.simulate_missing:
+                        logger.warning(
+                            f"Could not connect to heating/cooling device on {device.port}, setting device simulated",
+                            exc_info=err,
+                        )
+                        device.device = huber_chiller.HuberChillerSim(device.port)
 
         if scan:
             logger.debug("Looking for heating/cooling devices")
@@ -469,7 +484,15 @@ class ApplicationSystem(ApplicationSystemBase):
                 SartoriusArium = (
                     sartorius_arium.SartoriusAriumSim if device.simulated else sartorius_arium.SartoriusArium
                 )
-                device.device = SartoriusArium(device.server_url, device.trigger_port)
+                try:
+                    device.device = SartoriusArium(device.server_url, device.trigger_port)
+                except sartorius_arium.SartoriusAriumNotFoundException as err:
+                    if self._config.simulate_missing:
+                        logger.warning(
+                            f"Could not connect to purification device on {device.server_url}, setting device simulated",
+                            exc_info=err,
+                        )
+                        device.device = sartorius_arium.SartoriusAriumSim(device.server_url, device.trigger_port)
 
         if scan:
             logger.warning("Automatic searching for purification devices is not supported at the moment!")
@@ -500,7 +523,15 @@ class ApplicationSystem(ApplicationSystemBase):
             if device.manufacturer == "2mag":
                 logger.debug(f"Connecting to stirring device on port {device.port!r}")
                 MIXdrive = twomag_mixdrive.MIXdriveSim if device.simulated else twomag_mixdrive.MIXdrive
-                device.device = MIXdrive(device.port)
+                try:
+                    device.device = MIXdrive(device.port)
+                except twomag_mixdrive.MIXdriveNotFoundException as err:
+                    if self._config.simulate_missing:
+                        logger.warning(
+                            f"Could not connect to stirring device on {device.port}, setting device simulated",
+                            exc_info=err,
+                        )
+                        device.device = twomag_mixdrive.MIXdriveSim(device.port)
 
         if scan:
             logger.debug("Looking for stirring devices")

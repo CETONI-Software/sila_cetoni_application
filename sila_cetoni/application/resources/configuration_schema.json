@@ -61,6 +61,11 @@
                     "default": false,
                     "title": "Automatically scan for supported connected devices (e.g. scan for available Sartorius balances if the sila_cetoni_balance package is installed). This value can be overwritten by the CLI option --scan-devices/--no-scan-devices."
                 },
+                "simulate_missing": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Try to simulate devices which are not explicitly set to 'simulated' in the config file if the application cannot connect to them. This value can be overwritten by the CLI option --simulate-missing/--no-simulate-missing."
+                },
                 "cetoni_devices": {
                     "$ref": "#/definitions/CetoniDevices"
                 },

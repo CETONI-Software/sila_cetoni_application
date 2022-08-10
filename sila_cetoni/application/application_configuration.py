@@ -56,6 +56,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
     DEFAULT_LOG_LEVEL: str = __SCHEMA_PROPERTIES["log_level"]["default"]
     DEFAULT_REGENERATE_CERTIFICATES: bool = __SCHEMA_PROPERTIES["regenerate_certificates"]["default"]
     DEFAULT_SCAN_DEVICES: bool = __SCHEMA_PROPERTIES["scan_devices"]["default"]
+    DEFAULT_SIMULATE_MISSING: bool = __SCHEMA_PROPERTIES["simulate_missing"]["default"]
 
     def __init__(self, name: str, config_file_path: Path) -> None:
         super().__init__(name, config_file_path)
@@ -82,6 +83,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
                     "regenerate_certificates", self.DEFAULT_REGENERATE_CERTIFICATES
                 )
                 self.__scan_devices = config.get("scan_devices", self.DEFAULT_SCAN_DEVICES)
+                self.__simulate_missing = config.get("simulate_missing", self.DEFAULT_SIMULATE_MISSING)
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as err:
             raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}", exc_info=err)
 
@@ -99,7 +101,8 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
         return (
             super().__str__() + f", version: {self.__version}, server_ip: {self.__server_ip}, "
             f"server_base_port: {self.__server_base_port}, log_level: {self.__log_level}, "
-            f"regenerate_certificates: {self.__regenerate_certificates}, scan_devices: {self.__scan_devices}"
+            f"regenerate_certificates: {self.__regenerate_certificates}, scan_devices: {self.__scan_devices}, "
+            f"simulate_missing: {self.__simulate_missing}"
         )
 
     @property
@@ -183,6 +186,19 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
         if scan_devices is not self.DEFAULT_SCAN_DEVICES:
             logger.warning(f"Overwriting scan_devices with {scan_devices!r} (was {self.scan_devices!r})")
             self.__scan_devices = scan_devices
+
+    @property
+    def simulate_missing(self) -> bool:
+        return self.__simulate_missing
+
+    @simulate_missing.setter
+    def simulate_missing(self, simulate_missing: bool):
+        """
+        Sets the `simulate_missing` property but only if the given `simulate_missing` is not the default value of this property
+        """
+        if simulate_missing is not self.DEFAULT_SIMULATE_MISSING:
+            logger.warning(f"Overwriting simulate_missing with {simulate_missing!r} (was {self.simulate_missing!r})")
+            self.__simulate_missing = simulate_missing
 
     @property
     def cetoni_device_config_path(self) -> Optional[Path]:

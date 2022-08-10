@@ -116,6 +116,13 @@ def main(
             "sila_cetoni_balance package is installed)"
         ),
     ),
+    simulate_missing: bool = typer.Option(
+        False,
+        help=(
+            "Try to simulate devices which are not explicitly set to 'simulated' in the config file if the application "
+            "cannot connect to them"
+        ),
+    ),
     config_file: Path = typer.Argument(
         "config.json",
         exists=True,
@@ -152,6 +159,7 @@ def main(
     application.config.server_base_port = server_base_port
     application.config.regenerate_certificates = regenerate_certificates
     application.config.scan_devices = scan_devices
+    application.config.simulate_missing = simulate_missing
     if log_file_dir is not None:
         application.config.log_file_dir = log_file_dir
     # set logging level from config.json if not given via CLI option
