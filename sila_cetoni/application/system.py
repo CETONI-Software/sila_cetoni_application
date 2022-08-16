@@ -52,8 +52,9 @@ from .server_configuration import ServerConfiguration
 from .singleton import ABCSingleton
 
 if TYPE_CHECKING:
-    from .device import PurificationDevice
+    from ....device_driver_abc import DeviceDriverABC
     from .cetoni_device_configuration import CetoniDeviceConfiguration
+    from .device import BalanceDevice, HeatingCoolingDevice, PurificationDevice, StirringDevice, ThirdPartyDevice
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,11 @@ class ApplicationSystem(ApplicationSystemBase):
         if self.__cetoni_application_system is not None:
             self.__cetoni_application_system.start()
         for device in self._config.devices:
-            device.device.start()
+            try:
+                device.device.start()
+            except Exception as err:
+                device.device = self.___set_device_driver_simulated_or_raise(device, err)
+                device.device.start()
 
     def stop(self):
         logger.info("Stopping application system...")
@@ -312,6 +317,48 @@ class ApplicationSystem(ApplicationSystemBase):
             return self._config.devices + self.__cetoni_application_system.device_config.devices
         return self._config.devices
 
+    def ___set_device_driver_simulated_or_raise(self, device: ThirdPartyDevice, err: Exception) -> DeviceDriverABC:
+        """
+        Swaps the device driver of the given `device` to a simulated driver or raises `err` if this is not possible
+        """
+        if self._config.simulate_missing and not device.simulated:
+            device.simulated = True
+            if device.device_type == "balance":
+                from sila_cetoni.balance.device_drivers import sartorius_balance
+
+                if isinstance(err, sartorius_balance.SartoriusBalanceNotFoundException):
+                    logger.warning(
+                        f"Could not connect to balance on {device.port}, setting device simulated", exc_info=err
+                    )
+                    return sartorius_balance.SartoriusBalanceSim(device.port)
+            elif device.device_type == "heating_cooling":
+                from sila_cetoni.heating_cooling.device_drivers import huber_chiller
+
+                if isinstance(err, huber_chiller.HuberChillerNotFoundException):
+                    logger.warning(
+                        f"Could not connect to heating/cooling device on {device.port}, setting device simulated",
+                        exc_info=err,
+                    )
+                    return huber_chiller.HuberChillerSim(device.port)
+            elif device.device_type == "purification":
+                from sila_cetoni.purification.device_drivers import sartorius_arium
+
+                if isinstance(err, sartorius_arium.SartoriusAriumNotFoundException):
+                    logger.warning(
+                        f"Could not connect to purification device on {device.server_url}, setting device simulated",
+                        exc_info=err,
+                    )
+                    return sartorius_arium.SartoriusAriumSim(device.server_url, device.trigger_port)
+            elif device.device_type == "stirring":
+                from sila_cetoni.stirring.device_drivers import twomag_mixdrive
+
+                if isinstance(err, twomag_mixdrive.MIXdriveNotFoundException):
+                    logger.warning(
+                        f"Could not connect to stirring device on {device.port}, setting device simulated", exc_info=err
+                    )
+                    return twomag_mixdrive.MIXdriveSim(device.port)
+        raise err
+
     # -------------------------------------------------------------------------
     # Balance
     def __create_balances(self, scan: bool = False):
@@ -333,6 +380,8 @@ class ApplicationSystem(ApplicationSystemBase):
                 logger.warning(msg, exc_info=err)
             return
 
+        balances: List[BalanceDevice]  # typing
+
         for balance in balances:
             if balance.manufacturer == "Sartorius":
                 logger.debug(f"Connecting to balance on port {balance.port!r}")
@@ -342,11 +391,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 try:
                     balance.device = SartoriusBalance(balance.port)
                 except sartorius_balance.BalanceNotFoundException as err:
-                    if self._config.simulate_missing:
-                        logger.warning(
-                            f"Could not connect to balance on {balance.port}, setting device simulated", exc_info=err
-                        )
-                        balance.device = sartorius_balance.SartoriusBalanceSim(balance.port)
+                    balance.device = self.___set_device_driver_simulated_or_raise(balance, err)
 
         if scan:
             logger.debug("Looking for balances")
@@ -427,6 +472,8 @@ class ApplicationSystem(ApplicationSystemBase):
                 logger.warning(msg, exc_info=err)
             return
 
+        devices: List[HeatingCoolingDevice]  # typing
+
         for device in devices:
             if device.manufacturer == "Huber":
                 logger.debug(f"Connecting to heating/cooling device on port {device.port!r}")
@@ -434,12 +481,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 try:
                     device.device = HuberChiller(device.port)
                 except huber_chiller.HuberChillerNotFoundException as err:
-                    if self._config.simulate_missing:
-                        logger.warning(
-                            f"Could not connect to heating/cooling device on {device.port}, setting device simulated",
-                            exc_info=err,
-                        )
-                        device.device = huber_chiller.HuberChillerSim(device.port)
+                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
 
         if scan:
             logger.debug("Looking for heating/cooling devices")
@@ -478,6 +520,8 @@ class ApplicationSystem(ApplicationSystemBase):
                 logger.warning(msg, exc_info=err)
             return
 
+        devices: List[PurificationDevice]  # typing
+
         for device in devices:
             if device.manufacturer == "Sartorius":
                 logger.debug(f"Connecting to purification device via {device.server_url!r}")
@@ -487,12 +531,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 try:
                     device.device = SartoriusArium(device.server_url, device.trigger_port)
                 except sartorius_arium.SartoriusAriumNotFoundException as err:
-                    if self._config.simulate_missing:
-                        logger.warning(
-                            f"Could not connect to purification device on {device.server_url}, setting device simulated",
-                            exc_info=err,
-                        )
-                        device.device = sartorius_arium.SartoriusAriumSim(device.server_url, device.trigger_port)
+                    self.___set_device_driver_simulated_or_raise(device, err)
 
         if scan:
             logger.warning("Automatic searching for purification devices is not supported at the moment!")
@@ -519,6 +558,8 @@ class ApplicationSystem(ApplicationSystemBase):
                 logger.warning(msg, exc_info=err)
             return
 
+        devices: List[StirringDevice]  # typing
+
         for device in devices:
             if device.manufacturer == "2mag":
                 logger.debug(f"Connecting to stirring device on port {device.port!r}")
@@ -526,12 +567,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 try:
                     device.device = MIXdrive(device.port)
                 except twomag_mixdrive.MIXdriveNotFoundException as err:
-                    if self._config.simulate_missing:
-                        logger.warning(
-                            f"Could not connect to stirring device on {device.port}, setting device simulated",
-                            exc_info=err,
-                        )
-                        device.device = twomag_mixdrive.MIXdriveSim(device.port)
+                    self.___set_device_driver_simulated_or_raise(device, err)
 
         if scan:
             logger.debug("Looking for stirring devices")

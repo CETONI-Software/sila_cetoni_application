@@ -59,7 +59,7 @@ class Device(ABC):
     def __repr__(self) -> str:
         return (
             f"{type(self).__name__}({self._name!r}, {self._device_type!r}, {self.manufacturer!r}"
-            f"{', simulated' if self.manufacturer else ''})"
+            f"{', simulated' if self.simulated else ''})"
         )
 
     @property
@@ -75,8 +75,12 @@ class Device(ABC):
         return self._manufacturer
 
     @property
-    def simulated(self) -> str:
+    def simulated(self) -> bool:
         return self._simulated
+
+    @simulated.setter
+    def simulated(self, simulated: bool):
+        self._simulated = simulated
 
 
 try:
