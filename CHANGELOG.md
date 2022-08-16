@@ -18,6 +18,10 @@ Types of changes
 
 ## Unreleased
 
+### Fixed
+
+- Automatically simulating missing devices did not work if the device was detected as "missing" in `ApplicationSystem.start`
+
 ## v1.6.0
 
 Sync with sila_cetoni v1.6.0
