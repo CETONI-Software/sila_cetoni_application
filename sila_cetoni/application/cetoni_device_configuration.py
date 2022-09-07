@@ -158,6 +158,10 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
             # directory where python.exe is located. In order for the SDK to find
             # all plugins, nonetheless, we need to give it it's expected plugin
             # path.
+            # add SDK path and plugin path to PATH env variable to enable proper loading of shared libraries
+            os.environ["PATH"] = os.pathsep.join(
+                [CETONI_SDK_PATH, os.path.join(CETONI_SDK_PATH, "plugins", "labbcan"), os.environ["PATH"]]
+            )
             self.__bus.open(str(self.file_path), os.path.join(CETONI_SDK_PATH, "plugins", "labbcan"))
         except qmixbus.DeviceError as err:
             logger.error("Could not open the bus communication: %s", err)
