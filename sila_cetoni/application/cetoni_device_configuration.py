@@ -288,11 +288,14 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
                     device.valves += [valve]
                     break
             else:
-                device_name = re.match(r".*(?=_Valve\d?$)", valve_name).group()
-                if "QmixIO" in device_name:
-                    # These valve devices are actually just convenience devices that operate on digital I/O
-                    # channels. Hence, they can be just used via their corresponding I/O channel.
-                    continue
+                try:
+                    device_name = re.match(r".*(?=_Valve\d?$)", valve_name).group()
+                    if "QmixIO" in device_name:
+                        # These valve devices are actually just convenience devices that operate on digital I/O
+                        # channels. Hence, they can be just used via their corresponding I/O channel.
+                        continue
+                except AttributeError:
+                    device_name = valve_name
                 logger.debug(f"Standalone valve device {device_name}")
                 device = CetoniValveDevice(device_name)
                 logger.debug(f"Valve {valve_name} belongs to device {device}")
