@@ -295,6 +295,7 @@ class ApplicationSystem(ApplicationSystemBase):
             except Exception as err:
                 device.device = self.___set_device_driver_simulated_or_raise(device, err)
                 device.device.start()
+        logger.info("Application system started")
 
     def stop(self):
         logger.info("Stopping application system...")
@@ -302,7 +303,11 @@ class ApplicationSystem(ApplicationSystemBase):
         if self.__cetoni_application_system is not None:
             self.__cetoni_application_system.stop()
         for device in self._config.devices:
-            device.device.stop()
+            try:
+                device.device.stop()
+            except AttributeError:
+                # some devices might not be completely setup yet, i.e. they don't have a `device` that can be `stop`ped
+                continue
 
     @property
     def battery(self) -> Optional[BatteryInterface]:
