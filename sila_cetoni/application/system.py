@@ -531,7 +531,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 try:
                     device.device = SartoriusArium(device.server_url, device.trigger_port)
                 except sartorius_arium.SartoriusAriumNotFoundException as err:
-                    self.___set_device_driver_simulated_or_raise(device, err)
+                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
 
         if scan:
             logger.warning("Automatic searching for purification devices is not supported at the moment!")
@@ -567,7 +567,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 try:
                     device.device = MIXdrive(device.port)
                 except twomag_mixdrive.MIXdriveNotFoundException as err:
-                    self.___set_device_driver_simulated_or_raise(device, err)
+                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
 
         if scan:
             logger.debug("Looking for stirring devices")
