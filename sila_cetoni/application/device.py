@@ -262,10 +262,14 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
 
     def __new__(cls, name: str, json_data: Dict, *args, **kwargs) -> Self:
         device_type = json_data["type"]
+        manufacturer = json_data["manufacturer"]
         if device_type == "balance":
             return super().__new__(BalanceDevice)
         elif device_type == "heating_cooling":
-            return super().__new__(HeatingCoolingDevice)
+            if manufacturer == "Huber":
+                return super().__new__(HuberChillerDevice)
+            elif manufacturer == "Memmert":
+                return super().__new__(MemmertOvenDevice)
         elif device_type == "lcms":
             return super().__new__(LCMSDevice)
         elif device_type == "purification":
@@ -373,11 +377,20 @@ except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.lcms module! No support for lcms devices.")
 
 try:
-    from sila_cetoni.heating_cooling.device_drivers import TemperatureControllerInterface
+    from sila_cetoni.heating_cooling.device_drivers import HuberChillerInterface, MemmertOvenInterface
 
-    class HeatingCoolingDevice(ThirdPartyDevice[TemperatureControllerInterface]):
+    class HeatingCoolingDevice(Generic[_DeviceInterfaceT], ThirdPartyDevice[_DeviceInterfaceT]):
         """
         Simple class to represent a heating/cooling device
+        """
+
+        def __init__(self, name: str, json_data: Dict) -> None:
+            super().__init__(name, json_data)
+
+
+    class HuberChillerDevice(HeatingCoolingDevice[HuberChillerInterface]):
+        """
+        Simple class to represent a Huber Chiller device
         """
 
         __port: str
@@ -389,6 +402,22 @@ try:
         @property
         def port(self) -> str:
             return self.__port
+
+
+    class MemmertOvenDevice(HeatingCoolingDevice[MemmertOvenInterface]):
+        """
+        Simple class to represent a Memmert Oven device
+        """
+
+        __server_url: str
+
+        def __init__(self, name: str, json_data: Dict) -> None:
+            super().__init__(name, json_data)
+            self.__server_url = json_data["server_url"]
+
+        @property
+        def server_url(self) -> str:
+            return self.__server_url
 
 except (ModuleNotFoundError, ImportError):
     logger.warning(f"Could not find sila_cetoni.heating_cooling module! No support for heating/cooling devices.")

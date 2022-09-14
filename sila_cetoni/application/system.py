@@ -337,14 +337,24 @@ class ApplicationSystem(ApplicationSystemBase):
                     )
                     return sartorius_balance.SartoriusBalanceSim(device.port)
             elif device.device_type == "heating_cooling":
-                from sila_cetoni.heating_cooling.device_drivers import huber_chiller
+                if device.manufacturer == "Huber":
+                    from sila_cetoni.heating_cooling.device_drivers import huber_chiller
 
-                if isinstance(err, huber_chiller.HuberChillerNotFoundException):
-                    logger.warning(
-                        f"Could not connect to heating/cooling device on {device.port}, setting device simulated",
-                        exc_info=err,
-                    )
-                    return huber_chiller.HuberChillerSim(device.port)
+                    if isinstance(err, huber_chiller.HuberChillerNotFoundException):
+                        logger.warning(
+                            f"Could not connect to Huber Chiller on {device.port}, setting device simulated",
+                            exc_info=err,
+                        )
+                        return huber_chiller.HuberChillerSim(device.port)
+                elif device.manufacturer == "Memmert":
+                    from sila_cetoni.heating_cooling.device_drivers import memmert_oven
+
+                    if isinstance(err, memmert_oven.MemmertOvenNotFoundException):
+                        logger.warning(
+                            f"Could not connect to Memmert Oven on {device.server_url}, setting device simulated",
+                            exc_info=err,
+                        )
+                        return memmert_oven.MemmertOvenSim(device.server_url)
             elif device.device_type == "purification":
                 from sila_cetoni.purification.device_drivers import sartorius_arium
 
@@ -466,9 +476,9 @@ class ApplicationSystem(ApplicationSystemBase):
         devices = list(filter(lambda d: d.device_type == "heating_cooling", self._config.devices))
 
         try:
-            from sila_cetoni.heating_cooling.device_drivers import huber_chiller
+            from sila_cetoni.heating_cooling.device_drivers import huber_chiller, memmert_oven
 
-            from .device import HeatingCoolingDevice
+            from .device import HeatingCoolingDevice, HuberChillerDevice, MemmertOvenDevice
         except (ModuleNotFoundError, ImportError) as err:
             msg = "Could not import sila_cetoni.heating_cooling package - no support for heating/cooling devices!"
             if len(devices) > 0:
@@ -481,15 +491,25 @@ class ApplicationSystem(ApplicationSystemBase):
 
         for device in devices:
             if device.manufacturer == "Huber":
-                logger.debug(f"Connecting to heating/cooling device on port {device.port!r}")
+                device: HuberChillerDevice # typing
+                logger.debug(f"Connecting to Huber Chiller on port {device.port!r}")
                 HuberChiller = huber_chiller.HuberChillerSim if device.simulated else huber_chiller.HuberChiller
                 try:
                     device.device = HuberChiller(device.port)
                 except huber_chiller.HuberChillerNotFoundException as err:
                     device.device = self.___set_device_driver_simulated_or_raise(device, err)
+            elif device.manufacturer == "Memmert":
+                device: MemmertOvenDevice # typing
+                logger.debug(f"Connecting to Memmert Oven at {device.server_url!r}")
+                Memmertoven = memmert_oven.MemmertOvenSim if device.simulated else memmert_oven.MemmertOven
+                try:
+                    device.device = Memmertoven(device.server_url)
+                except memmert_oven.MemmertOvenNotFoundException as err:
+                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
 
         if scan:
             logger.debug("Looking for heating/cooling devices")
+            logger.info("Automatic searching for heating/cooling devices will only find Huber Chillers!")
 
             dev = huber_chiller.HuberChiller()
             try:
