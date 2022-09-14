@@ -72,7 +72,7 @@ def main(
         None,
         metavar="DIR",
         help="The directory to write log files to (if not given log messages will only be printed to standard out)",
-        exists=True,
+        exists=False,
         file_okay=False,
         dir_okay=True,
         readable=True,
@@ -149,6 +149,7 @@ def main(
 
     log_file_handler: logging.FileHandler = None
     if log_file_dir is not None:
+        os.makedirs(log_file_dir, exist_ok=True)
         log_file_handler = make_log_file_handler(log_file_dir, log_level)
         logging.getLogger().addHandler(log_file_handler)
     logging.info(f"Starting log for {sys.executable} with args {sys.argv}")
