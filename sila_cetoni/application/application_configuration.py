@@ -85,7 +85,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
                 self.__scan_devices = config.get("scan_devices", self.DEFAULT_SCAN_DEVICES)
                 self.__simulate_missing = config.get("simulate_missing", self.DEFAULT_SIMULATE_MISSING)
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as err:
-            raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}", exc_info=err)
+            raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}")
 
     def __parse_devices(self, devices: Optional[Dict[str, Dict]]):
         logger.debug(f"JSON devices {devices}")
