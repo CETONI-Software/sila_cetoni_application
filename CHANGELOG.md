@@ -18,6 +18,14 @@ Types of changes
 
 ## Unreleased
 
+## v1.7.0
+
+Synch with sila_cetoni v1.7.0
+
+### Changed
+
+- Bump required sila2 version to v0.10.0
+
 ### Fixed
 
 - Automatically simulating missing devices did not work if the device was detected as "missing" in `ApplicationSystem.start`
