@@ -21,7 +21,7 @@ dependencies = [
     "coloredlogs",
     "jsonschema",
     "pyserial",
-    "sila2[codegen]==0.8.2",
+    "sila2[codegen]==0.10.0
     "typer"
 ]
 
