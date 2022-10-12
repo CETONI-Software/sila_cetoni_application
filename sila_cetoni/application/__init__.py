@@ -85,8 +85,8 @@ except (ModuleNotFoundError, ImportError) as err:
         if sys.argv[0] == "-m":
             # started via `python -m sila_cetoni.application <args>`
             os.execve(sys.executable, [sys.executable, "-m", __name__] + [_NO_EXEC_OPTION] + sys.argv[1:], env)
-        elif sys.argv[0].endswith("__init__.py"):
-            # imported via `import sila_cetoni.application` -> prevent calling os.execve in this case
+        elif sys.argv[0].endswith("__init__.py") or sys.argv[0] == "":
+            # imported via `import sila_cetoni.application` or in python console -> prevent calling os.execve in this case
             pass
         else:
             # started via `sila-cetoni <args>`
