@@ -128,7 +128,8 @@
                         "heating_cooling",
                         "lcms",
                         "purification",
-                        "stirring"
+                        "stirring",
+                        "io"
                     ]
                 },
                 "manufacturer": {
@@ -139,7 +140,8 @@
                         "Huber",
                         "Memmert",
                         "Shimadzu",
-                        "2mag"
+                        "2mag",
+                        "Kunbus"
                     ]
                 },
                 "simulated": {
@@ -347,6 +349,25 @@
                             "manufacturer": {
                                 "enum": [
                                     "2mag"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "$comment": "All possible 'manufacturer's for the 'type' 'io'",
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "io"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "manufacturer": {
+                                "enum": [
+                                    "Kunbus"
                                 ]
                             }
                         }

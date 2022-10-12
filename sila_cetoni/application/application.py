@@ -39,9 +39,9 @@ if TYPE_CHECKING:
     from sila_cetoni.application.device import (
         CetoniPumpDevice,
         CetoniAxisSystemDevice,
-        CetoniControllerDevice,
-        CetoniIODevice,
-        CetoniValveDevice,
+        ControllerDevice,
+        IODevice,
+        ValveDevice,
         BalanceDevice,
         HeatingCoolingDevice,
         LCMSDevice,
@@ -238,19 +238,19 @@ class Application(Singleton):
                     **common_args,
                 )
             elif device.device_type == "valve":
-                valve_device: CetoniValveDevice = device
+                valve_device: ValveDevice = device
 
                 from sila_cetoni.valves.sila.valve_service.server import Server
 
                 server = Server(valves=valve_device.valves, **common_args)
             elif device.device_type == "controller":
-                controller_device: CetoniControllerDevice = device
+                controller_device: ControllerDevice = device
 
                 from sila_cetoni.controllers.sila.controllers_service.server import Server
 
                 server = Server(controller_channels=controller_device.controller_channels, **common_args)
             elif device.device_type == "io":
-                io_device: CetoniIODevice = device
+                io_device: IODevice = device
 
                 from sila_cetoni.io.sila.io_service.server import Server
 

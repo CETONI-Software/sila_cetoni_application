@@ -281,6 +281,7 @@ class ApplicationSystem(ApplicationSystemBase):
         self.__create_heating_cooling_devices(self._config.scan_devices)
         self.__create_purification_devices(self._config.scan_devices)
         self.__create_stirring_devices(self._config.scan_devices)
+        self.__create_io_devices(self._config.scan_devices)
 
         logger.debug(f"Created devices {self._config.devices}")
 
@@ -291,7 +292,8 @@ class ApplicationSystem(ApplicationSystemBase):
             self.__cetoni_application_system.start()
         for device in self._config.devices:
             try:
-                device.device.start()
+                if device.device is not None:
+                    device.device.start()
             except Exception as err:
                 device.device = self.___set_device_driver_simulated_or_raise(device, err)
                 device.device.start()
@@ -491,7 +493,7 @@ class ApplicationSystem(ApplicationSystemBase):
 
         for device in devices:
             if device.manufacturer == "Huber":
-                device: HuberChillerDevice # typing
+                device: HuberChillerDevice  # typing
                 logger.debug(f"Connecting to Huber Chiller on port {device.port!r}")
                 HuberChiller = huber_chiller.HuberChillerSim if device.simulated else huber_chiller.HuberChiller
                 try:
@@ -499,7 +501,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 except huber_chiller.HuberChillerNotFoundException as err:
                     device.device = self.___set_device_driver_simulated_or_raise(device, err)
             elif device.manufacturer == "Memmert":
-                device: MemmertOvenDevice # typing
+                device: MemmertOvenDevice  # typing
                 logger.debug(f"Connecting to Memmert Oven at {device.server_url!r}")
                 Memmertoven = memmert_oven.MemmertOvenSim if device.simulated else memmert_oven.MemmertOven
                 try:
@@ -565,7 +567,7 @@ class ApplicationSystem(ApplicationSystemBase):
     # Stirring
     def __create_stirring_devices(self, scan: bool = False):
         """
-        Looks up all stirring devices from the current configuration and tries to auto-detect more devices if`scan` is
+        Looks up all stirring devices from the current configuration and tries to auto-detect more devices if `scan` is
         `True`
         """
 
@@ -606,3 +608,42 @@ class ApplicationSystem(ApplicationSystemBase):
                 self._config.devices += [device]
             except twomag_mixdrive.MIXdriveNotFoundException:
                 pass
+
+    # -------------------------------------------------------------------------
+    # I/O
+    def __create_io_devices(self, scan: bool = False):
+        """
+        Looks up all I/O devices from the current configuration and tries to auto-detect more devices if `scan` is `True`
+        """
+
+        devices: List[IODevice] = list(filter(lambda d: d.device_type == "io", self._config.devices))
+
+        try:
+            from sila_cetoni.io.device_drivers import revpi
+
+            from .device import IODevice
+        except (ModuleNotFoundError, ImportError) as err:
+            msg = "Could not import sila_cetoni.io.device_drivers.revpi package - no support for Revolution PI I/O!"
+            if len(devices) > 0:
+                raise RuntimeError(msg)
+            else:
+                logger.warning(msg, exc_info=err)
+            return
+
+        for device in devices:
+            if device.manufacturer == "Kunbus":
+                channels: List[revpi.IOChannelInterface] = []
+
+                for (description, ChannelType) in (
+                    # ("analog in", revpi.RevPiAnalogInChannel),
+                    # ("analog out", revpi.RevPiAnalogOutChannel),
+                    ("digital in", revpi.RevPiDigitalInChannel),
+                    ("digital out", revpi.RevPiDigitalOutChannel),
+                ):
+                    channel_count = ChannelType.number_of_channels()
+                    logger.debug(f"Number of {description} channels: {channel_count}")
+                    for i in range(channel_count):
+                        channels += [ChannelType.channel_at_index(i)]
+                        logger.debug(f"Found {description} channel {i} named {channels[-1].name}")
+
+                device.io_channels = channels

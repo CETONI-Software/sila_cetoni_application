@@ -28,10 +28,13 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Type, TypeVar
 
 from sila_cetoni.device_driver_abc import DeviceDriverABC
 from typing_extensions import Self
+
+if TYPE_CHECKING:
+    from sila_cetoni.io.device_drivers import cetoni
 
 from .application_configuration import SCHEMA
 
@@ -83,12 +86,118 @@ class Device(ABC):
         self._simulated = simulated
 
 
+_T = TypeVar("_T")
+
+
+class PumpDevice(Device):
+    """
+    Simple class to represent a pump device
+    """
+
+    pass
+
+
+class AxisSystemDevice(Device):
+    """
+    Simple class to represent an axis system device
+    """
+
+    pass
+
+
+class ValveDevice(Device, Generic[_T]):
+    """
+    Simple class to represent a device with (possibly) multiple valves
+
+    Template Parameters
+    -------------------
+    _T: type
+        The type of the valves (e.g. `qmixvalve.Valve`)
+    """
+
+    _valves: List[_T]
+
+    def __init__(self, name: str, manufacturer: str, simulated: bool, *, device_type="valve", **kwargs) -> None:
+        # `**kwargs` for additional arguments that are not used and that might come from `ThirdPartyDevice.__init__` as
+        # the result of `ThirdPartyValveDevice.__init__`
+        super().__init__(name=name, device_type=device_type or "valve", manufacturer=manufacturer, simulated=simulated)
+
+    @property
+    def valves(self) -> List[_T]:
+        return self._valves
+
+    @valves.setter
+    def valves(self, valves: List[_T]):
+        self._valves = valves
+
+
+class ControllerDevice(Device, Generic[_T]):
+    """
+    Simple class to represent a controller device with (possibly) multiple controller channels
+
+    Template Parameters
+    -------------------
+    _T: type
+        The type of the controller channels (e.g. `qmixcontroller.ControllerChannels`)
+    """
+
+    _controller_channels: List[_T]
+
+    def __init__(self, name: str, manufacturer: str, simulated: bool, *, device_type="controller", **kwargs) -> None:
+        # `**kwargs` for additional arguments that are not used and that might come from `ThirdPartyDevice.__init__` as
+        # the result of `ThirdPartyControllerDevice.__init__`
+        super().__init__(
+            name=name, device_type=device_type or "controller", manufacturer=manufacturer, simulated=simulated
+        )
+
+    @property
+    def controller_channels(self) -> List[_T]:
+        return self._controller_channels
+
+    @controller_channels.setter
+    def controller_channels(self, controller_channels: List[_T]):
+        self._controller_channels = controller_channels
+
+
+class IODevice(Device, Generic[_T]):
+    """
+    Simple class to represent an I/O device with (possibly) multiple I/O channels
+
+    Template Parameters
+    -------------------
+    _T: type
+        The type of the I/O channels (e.g. `cetoni.IOChannelInterface`)
+    """
+
+    _io_channels: List[_T]
+
+    def __init__(self, name: str, manufacturer: str, simulated: bool, *, device_type="io", **kwargs) -> None:
+        # `**kwargs` for additional arguments that are not used and that might come from `ThirdPartyDevice.__init__` as
+        # the result of `ThirdPartyIODevice.__init__`
+        super().__init__(name=name, device_type=device_type or "io", manufacturer=manufacturer, simulated=simulated)
+
+    @property
+    def io_channels(self) -> List[_T]:
+        return self._io_channels
+
+    @io_channels.setter
+    def io_channels(self, io_channels: List[_T]):
+        self._io_channels = io_channels
+
+
 try:
-    from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+    from qmixsdk import qmixbus, qmixcontroller, qmixmotion, qmixpump, qmixvalve
+    from sila_cetoni.io.device_drivers import cetoni
 
     _QmixBusDeviceT = TypeVar("_QmixBusDeviceT", bound=qmixbus.Device)
 
-    class CetoniDevice(Device, Generic[_QmixBusDeviceT]):
+    class CetoniDevice(
+        ValveDevice[qmixvalve.Valve],
+        ControllerDevice[qmixcontroller.ControllerChannel],
+        IODevice[cetoni.IOChannelInterface],
+        Device,
+        Generic[_QmixBusDeviceT],
+    ):
         """
         A CETONI device represented by a device handle, (optional) device properties, and optional I/O channels,
         controller channels and valves (some devices may have I/O channels, controller channels or valves attached to
@@ -103,17 +212,13 @@ try:
         _device_handle: Type[_QmixBusDeviceT]
         _device_properties: Dict[str, Any]
 
-        # a device *might* have any combination and number of the following
-        _io_channels: List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]
-        _controller_channels: List[qmixcontroller.ControllerChannel]
-        _valves: List[qmixvalve.Valve]
-
-        def __init__(self, name: str, device_type: str = "dummy", handle: Type[_QmixBusDeviceT] = None) -> None:
-            super().__init__(name, device_type, "CETONI", False)
+        def __init__(self, name: str, device_type: str = "", handle: Type[_QmixBusDeviceT] = None) -> None:
+            super().__init__(name=name, device_type=device_type, manufacturer="CETONI", simulated=False)
 
             self._device_handle = handle
             self._device_properties = {}
 
+            # a device *might* have any combination and number of the following
             self._valves = []
             self._controller_channels = []
             self._io_channels = []
@@ -134,30 +239,6 @@ try:
         @property
         def device_properties(self) -> Dict[str, Any]:
             return self._device_properties
-
-        @property
-        def io_channels(self) -> List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]:
-            return self._io_channels
-
-        @io_channels.setter
-        def io_channels(self, io_channels: List[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]):
-            self._io_channels = io_channels
-
-        @property
-        def controller_channels(self) -> List[qmixcontroller.ControllerChannel]:
-            return self._controller_channels
-
-        @controller_channels.setter
-        def controller_channels(self, controller_channels: List[qmixcontroller.ControllerChannel]):
-            self._controller_channels = controller_channels
-
-        @property
-        def valves(self) -> List[qmixvalve.Valve]:
-            return self._valves
-
-        @valves.setter
-        def valves(self, valves: List[qmixvalve.Valve]):
-            self._valves = valves
 
         def set_device_property(self, name: str, value: Any):
             """
@@ -232,7 +313,7 @@ try:
         def __init__(self, name: str) -> None:
             super().__init__(name, "controller")
 
-    class CetoniIODevice(CetoniDevice[Union[qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]]):
+    class CetoniIODevice(CetoniDevice[cetoni.IOChannelInterface]):
         """
         Simple class to represent an I/O device that has an arbitrary number of analog and digital I/O channels
         (inherited from the `CetoniDevice` class)
@@ -248,7 +329,7 @@ except (ModuleNotFoundError, ImportError):
 _DeviceInterfaceT = TypeVar("_DeviceInterfaceT", bound=DeviceDriverABC)
 
 
-class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
+class ThirdPartyDevice(Device, Generic[_DeviceInterfaceT]):
     """
     A generic third-party (i.e. non-CETONI) device represented by a device driver interface
 
@@ -276,16 +357,18 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
             return super().__new__(PurificationDevice)
         elif device_type == "stirring":
             return super().__new__(StirringDevice)
+        elif device_type == "io":
+            return super().__new__(ThirdPartyIODevice)
         else:
             raise RuntimeError(f"Unknown device type {device_type!r} for {cls.__name__!r}")
 
     def __init__(self, name: str, json_data: Dict) -> None:
         logger.info(json_data)
         super().__init__(
-            name,
-            json_data["type"],
-            json_data["manufacturer"],
-            json_data.get("simulated", SCHEMA["definitions"]["Device"]["properties"]["simulated"]["default"]),
+            name=name,
+            device_type=json_data["type"],
+            manufacturer=json_data["manufacturer"],
+            simulated=json_data.get("simulated", SCHEMA["definitions"]["Device"]["properties"]["simulated"]["default"]),
         )
 
     def __repr__(self) -> str:
@@ -304,44 +387,18 @@ class ThirdPartyDevice(Generic[_DeviceInterfaceT], Device):
         self._device = device
 
 
-class PumpDevice(ThirdPartyDevice):
-    """
-    Simple class to represent a pump device
-    """
-
-    pass
+from sila_cetoni.io.device_drivers import IOChannelInterface
 
 
-class AxisSystemDevice(ThirdPartyDevice):
+class ThirdPartyIODevice(ThirdPartyDevice[IOChannelInterface], IODevice[IOChannelInterface]):
     """
-    Simple class to represent an axis system device
+    A third party I/O device
     """
 
-    pass
+    def __init__(self, name: str, json_data: Dict) -> None:
+        super().__init__(name, json_data)
 
-
-class ValveDevice(ThirdPartyDevice):
-    """
-    Simple class to represent a valve device
-    """
-
-    pass
-
-
-class ControllerDevice(ThirdPartyDevice):
-    """
-    Simple class to represent a controller device
-    """
-
-    pass
-
-
-class IODevice(ThirdPartyDevice):
-    """
-    Simple class to represent an I/O device
-    """
-
-    pass
+        self._device = None
 
 
 try:
@@ -387,7 +444,6 @@ try:
         def __init__(self, name: str, json_data: Dict) -> None:
             super().__init__(name, json_data)
 
-
     class HuberChillerDevice(HeatingCoolingDevice[HuberChillerInterface]):
         """
         Simple class to represent a Huber Chiller device
@@ -402,7 +458,6 @@ try:
         @property
         def port(self) -> str:
             return self.__port
-
 
     class MemmertOvenDevice(HeatingCoolingDevice[MemmertOvenInterface]):
         """

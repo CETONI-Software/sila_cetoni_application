@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import List, Union
 
 from lxml import etree, objectify
-
-# import qmixsdk
-from qmixsdk import qmixanalogio, qmixbus, qmixcontroller, qmixdigio, qmixmotion, qmixpump, qmixvalve
+from qmixsdk import qmixbus, qmixcontroller, qmixmotion, qmixpump, qmixvalve
 from sila_cetoni.config import CETONI_SDK_PATH
+from sila_cetoni.io.device_drivers import cetoni
 
 from .configuration import DeviceConfiguration
 from .device import (
@@ -329,30 +328,25 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         Looks up all I/Os from the current configuration and adds them as `CetoniIODevice` to the device list
         """
 
-        channels = []
+        channels: List[cetoni.IOChannelInterface] = []
 
-        for (description, ChannelType) in {
-            "analog in": qmixanalogio.AnalogInChannel,
-            "analog out": qmixanalogio.AnalogOutChannel,
-            "digital in": qmixdigio.DigitalInChannel,
-            "digital out": qmixdigio.DigitalOutChannel,
-        }.items():
-
-            channel_count = ChannelType.get_no_of_channels()
-            logger.debug("Number of %s channels: %s", description, channel_count)
-
+        for (description, ChannelType) in (
+            ("analog in", cetoni.CetoniAnalogInChannel),
+            ("analog out", cetoni.CetoniAnalogOutChannel),
+            ("digital in", cetoni.CetoniDigitalInChannel),
+            ("digital out", cetoni.CetoniDigitalOutChannel),
+        ):
+            channel_count = ChannelType.number_of_channels()
+            logger.debug(f"Number of {description} channels: {channel_count}")
             for i in range(channel_count):
-                channel = ChannelType()
-                channel.lookup_channel_by_index(i)
-                channel_name = channel.get_name()
-                logger.debug("Found %s channel %d named %s", description, i, channel_name)
-                channels.append(channel)
+                channels += [ChannelType.channel_at_index(i)]
+                logger.debug(f"Found {description} channel {i} named {channels[-1].name}")
 
         self.add_channels_to_device(channels)
 
     def add_channels_to_device(
         self,
-        channels: List[Union[qmixcontroller.ControllerChannel, qmixanalogio.AnalogChannel, qmixdigio.DigitalChannel]],
+        channels: List[Union[qmixcontroller.ControllerChannel, cetoni.IOChannelInterface]],
     ):
         """
         A device might have controller or I/O channels. This relationship between a device and its channels is

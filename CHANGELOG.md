@@ -18,6 +18,12 @@ Types of changes
 
 ## Unreleased
 
+### Changed
+
+- `CetoniDevice` and `CetoniIODevice` use the agnostic `IOChannelInterface` subclasses now instead of the `qmixanalogio`/`qmixdigio` classes
+- `ApplicationSystem` supports third-party I/O devices from the JSON configuration now
+- The JSON schema was updated to allow specifying third-party I/O devices (currently only Kunbus' Revolution PI I/O modules are supported)
+
 ## v1.7.1
 
 Sync with sila_cetoni v1.7.1 release
