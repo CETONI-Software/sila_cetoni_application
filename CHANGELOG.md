@@ -24,6 +24,10 @@ Types of changes
 - `ApplicationSystem` supports third-party I/O devices from the JSON configuration now
 - The JSON schema was updated to allow specifying third-party I/O devices (currently only Kunbus' Revolution PI I/O modules are supported)
 
+### Fixed
+
+- The server configuration files don't use the raw server name any more but a valid file name without any special characters
+
 ## v1.7.1
 
 Sync with sila_cetoni v1.7.1 release

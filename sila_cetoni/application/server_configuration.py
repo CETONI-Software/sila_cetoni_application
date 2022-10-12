@@ -1,6 +1,7 @@
 import logging
 import os
 import platform
+import re
 import uuid
 from configparser import ConfigParser
 from typing import Dict, Optional, Set
@@ -31,10 +32,23 @@ class ServerConfiguration(Configuration):
             :param name: Name of the config file (should be the same as the server's name that this config is for)
             :param subdir: (optional) The subdirectory to store the config file in
         """
-        super().__init__(name, os.path.join(self.__config_dir(subdir), name + ".ini"))
+        super().__init__(name, os.path.join(self.__config_dir(subdir), self.__slugify(name) + ".ini"))
 
     def __del__(self):
         self.write()
+
+    @staticmethod
+    def __slugify(name: str) -> str:
+        """
+        Returns the slugified version of `name` (i.e. `name` stripped from all whitespaces and special characters that
+        are not allowed in filenames)
+
+        from https://stackoverflow.com/a/46801075/12780516 and
+        https://github.com/django/django/blob/004f985b918d5ea36fbed9b050459dd22edaf396/django/utils/text.py#L235-L248
+        """
+        name = str(name).strip().replace(" ", "_")
+        name = re.sub(r"(?u)[^-\w.]", "", name)
+        return name
 
     @staticmethod
     def __config_dir(subdir: str = "") -> str:
