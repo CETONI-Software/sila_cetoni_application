@@ -143,13 +143,13 @@ def main(
         return dir.joinpath(f"sila_cetoni-{log_level.lower()}-{strftime('%Y-%m-%d_%H-%M-%S')}.log")
 
     def make_log_file_handler(log_file_dir: Path, log_level: str) -> logging.FileHandler:
+        os.makedirs(log_file_dir, exist_ok=True)
         log_file_handler = logging.FileHandler(log_file_name(log_file_dir, log_level))
         log_file_handler.setFormatter(logging.Formatter(_LOGGING_FORMAT.format(thread_name_len=60)))
         return log_file_handler
 
     log_file_handler: logging.FileHandler = None
     if log_file_dir is not None:
-        os.makedirs(log_file_dir, exist_ok=True)
         log_file_handler = make_log_file_handler(log_file_dir, log_level)
         logging.getLogger().addHandler(log_file_handler)
     logging.info(f"Starting log for {sys.executable} with args {sys.argv}")
