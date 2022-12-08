@@ -635,8 +635,8 @@ class ApplicationSystem(ApplicationSystemBase):
                 channels: List[revpi.IOChannelInterface] = []
 
                 for (description, ChannelType) in (
-                    # ("analog in", revpi.RevPiAnalogInChannel),
-                    # ("analog out", revpi.RevPiAnalogOutChannel),
+                    ("analog in", revpi.RevPiAnalogInChannel),
+                    ("analog out", revpi.RevPiAnalogOutChannel),
                     ("digital in", revpi.RevPiDigitalInChannel),
                     ("digital out", revpi.RevPiDigitalOutChannel),
                 ):
