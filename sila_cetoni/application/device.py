@@ -398,7 +398,21 @@ class ThirdPartyIODevice(ThirdPartyDevice[IOChannelInterface], IODevice[IOChanne
     def __init__(self, name: str, json_data: Dict) -> None:
         super().__init__(name, json_data)
 
-        self._device = None
+        class IODeviceDummy(DeviceDriverABC):
+            __parent_device: ThirdPartyIODevice
+
+            def __init__(self, parent_device: ThirdPartyIODevice):
+                self.__parent_device = parent_device
+
+            def start(self):
+                for channel in self.__parent_device.io_channels:
+                    channel.start()
+
+            def stop(self):
+                for channel in self.__parent_device.io_channels:
+                    channel.stop()
+
+        self._device = IODeviceDummy(self)
 
 
 try:
