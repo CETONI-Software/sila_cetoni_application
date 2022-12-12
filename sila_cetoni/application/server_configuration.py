@@ -35,7 +35,10 @@ class ServerConfiguration(Configuration):
         super().__init__(name, os.path.join(self.__config_dir(subdir), self.__slugify(name) + ".ini"))
 
     def __del__(self):
-        self.write()
+        try:
+            self.write()
+        except NameError:
+            pass
 
     @staticmethod
     def __slugify(name: str) -> str:
