@@ -28,6 +28,7 @@ Types of changes
 - `ApplicationSystem` supports third-party I/O devices from the JSON configuration now
 - The JSON schema was updated to allow specifying third-party I/O devices (currently only Kunbus' Revolution PI I/O modules are supported)
 - Bump required sila2 version to v0.10.1
+- Increase required Python version to 3.8 because in 3.7 the implementation of `ThreadPoolExecutor` in the standard library does not reuse idle threads leading to an ever increasing number of threads which eventually causes blocking of the server(s) on Raspberry Pis
 
 ### Fixed
 
