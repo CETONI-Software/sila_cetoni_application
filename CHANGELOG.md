@@ -18,6 +18,10 @@ Types of changes
 
 ## Unreleased
 
+### Added
+
+- Support for RevolutionPi digital and analog I/O channels
+
 ### Changed
 
 - `CetoniDevice` and `CetoniIODevice` use the agnostic `IOChannelInterface` subclasses now instead of the `qmixanalogio`/`qmixdigio` classes
@@ -28,6 +32,9 @@ Types of changes
 ### Fixed
 
 - The server configuration files don't use the raw server name any more but a valid file name without any special characters
+- A non-existent log file directory will be created automatically from now on
+- Possible blocking during shutdown due to `ThirdPartyIODevice`'s I/O channels not being stopped
+- Fix `NameError` on shutdown in `ServerConfiguration.__del__` because `open` is not defined any more
 
 ## v1.7.1
 
