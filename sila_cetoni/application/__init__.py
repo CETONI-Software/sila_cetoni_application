@@ -43,7 +43,7 @@ else:
         logger.info(f"Running on Windows - setting SDK path to '{config.CETONI_SDK_PATH}'")
     else:
         try:
-            import RPi.GPIO as gpio
+            import RPi.GPIO
 
             config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK_Raspi")
             logger.info(f"Running on RaspberryPi - setting SDK path to '{config.CETONI_SDK_PATH}'")
@@ -58,6 +58,7 @@ else:
 # adjust PATH variable to point to the SDK
 sys.path.append(config.CETONI_SDK_PATH)
 sys.path.append(os.path.join(config.CETONI_SDK_PATH, "lib", "python"))
+sys.path.append(os.path.join(config.CETONI_SDK_PATH, "lib", "python", "src"))
 
 try:
     import qmixsdk
@@ -72,7 +73,13 @@ except (ModuleNotFoundError, ImportError) as err:
         # setup the environment for python to find the SDK and for ctypes to load the shared libs properly
         env = os.environ.copy()
         env["PATH"] = os.pathsep.join((config.CETONI_SDK_PATH, env["PATH"]))
-        env["PYTHONPATH"] = os.pathsep.join((os.path.join(config.CETONI_SDK_PATH, "python"), env.get("PYTHONPATH", "")))
+        env["PYTHONPATH"] = os.pathsep.join(
+            (
+                os.path.join(config.CETONI_SDK_PATH, "python"),
+                os.path.join(config.CETONI_SDK_PATH, "python", "src"),
+                env.get("PYTHONPATH", ""),
+            )
+        )
         env["LD_LIBRARY_PATH"] = os.pathsep.join(
             (os.path.join(config.CETONI_SDK_PATH, "lib"), env.get("LD_LIBRARY_PATH", ""))
         )
