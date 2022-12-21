@@ -19,6 +19,7 @@ from .device import (
     CetoniControllerDevice,
     CetoniDevice,
     CetoniIODevice,
+    CetoniMobDosDevice,
     CetoniPumpDevice,
     CetoniValveDevice,
     ControllerDevice,
@@ -51,6 +52,18 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         self.__bus = qmixbus.Bus()
         self.__open_bus()
 
+        logger.debug(f"Parsing device configuration {self._file_path}")
+
+        tree: objectify.ObjectifiedElement
+        with open(os.path.join(self._file_path, "device_properties.xml")) as f:
+            tree = objectify.parse(f)
+        root = tree.getroot()
+
+        try:
+            self._has_battery = bool(root.SiLA.BatteryPowered)
+        except AttributeError:
+            self._has_battery = False
+
         # The order is important here! Many devices have I/O channels but are not pure I/O devices (similarly, pumps
         # might have a valve but they're not a valve device). That's why valves have to be detected after pumps and I/O
         # devices have to be detected last (since then we can guarantee that there is no possibility for an I/O channel
@@ -61,12 +74,6 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         self.__create_controller_devices()
         self.__create_io_devices()
 
-        logger.debug(f"Parsing device configuration {self._file_path}")
-
-        tree: objectify.ObjectifiedElement
-        with open(os.path.join(self._file_path, "device_properties.xml")) as f:
-            tree = objectify.parse(f)
-        root = tree.getroot()
         for plugin in root.Core.PluginList.iterchildren():
             if plugin.text in (
                 "qmixelements",
@@ -84,10 +91,6 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
 
         logger.debug(f"Found the following devices: {self._devices}")
 
-        try:
-            self._has_battery = bool(root.SiLA.BatteryPowered)
-        except AttributeError:
-            self._has_battery = False
 
     def _parse_plugin(self, plugin_name: str):
         """
@@ -213,7 +216,9 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
                 logger.debug("Pump %s is contiflow pump", pump_name)
             except qmixbus.DeviceError:
                 pass
-            self._devices += [CetoniPumpDevice(pump_name, pump)]
+            self._devices += [
+                CetoniMobDosDevice(pump_name, pump) if self._has_battery else CetoniPumpDevice(pump_name, pump)
+            ]
 
     def enable_pumps(self):
         """

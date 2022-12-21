@@ -35,6 +35,7 @@ from typing_extensions import Self
 
 if TYPE_CHECKING:
     from sila_cetoni.io.device_drivers import cetoni
+    from sila_cetoni.mobdos.device_drivers.mobdos_battery import MobDosBattery
 
 from .application_configuration import SCHEMA
 
@@ -282,6 +283,22 @@ try:
             self._device_handle.enable(False)
             while not self._device_handle.is_enabled():
                 self._device_handle.enable(True)
+
+    class CetoniMobDosDevice(CetoniPumpDevice):
+        """
+        Simple class to represent a CETONI mobile dosage unit (i.e. a syringe pump with a battery)
+        """
+
+        battery: MobDosBattery
+
+        def __init__(self, name: str, handle: qmixpump.Pump) -> None:
+            super().__init__(name, handle)
+
+            self._device_type = "mobdos"
+
+            from sila_cetoni.mobdos.device_drivers.mobdos_battery import MobDosBattery
+
+            self.battery = MobDosBattery()
 
     class CetoniAxisSystemDevice(CetoniDevice[qmixmotion.AxisSystem]):
         """

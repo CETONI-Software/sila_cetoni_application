@@ -37,8 +37,9 @@ from sila2.server import SilaServer
 
 if TYPE_CHECKING:
     from sila_cetoni.application.device import (
-        CetoniPumpDevice,
         CetoniAxisSystemDevice,
+        CetoniPumpDevice,
+        CetoniMobDosDevice,
         ControllerDevice,
         IODevice,
         ValveDevice,
@@ -211,7 +212,6 @@ class Application(Singleton):
                     pump=pump.device_handle,
                     valve=pump.valves[0] if len(pump.valves) > 0 else None,
                     io_channels=pump.io_channels,
-                    battery=self.__system.battery,
                     **common_args,
                 )
             elif device.device_type == "contiflow_pump":
@@ -226,6 +226,17 @@ class Application(Singleton):
                 # server = Server(pump=pump.device_handle, **common_args)
                 logger.info(f"No support for peristaltic pumps yet! Skipping creation of SiLA Server for {pump.name}.")
                 continue
+            elif device.device_type == "mobdos":
+                mobdos: CetoniMobDosDevice = device
+                from sila_cetoni.mobdos.sila.mobdos_service.server import Server
+
+                server = Server(
+                    pump=mobdos.device_handle,
+                    valve=mobdos.valves[0] if len(mobdos.valves) > 0 else None,
+                    io_channels=mobdos.io_channels,
+                    battery=mobdos.battery,
+                    **common_args,
+                )
             elif device.device_type == "axis_system":
                 axis_system: CetoniAxisSystemDevice = device
 

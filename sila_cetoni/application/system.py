@@ -42,9 +42,6 @@ try:
 except (ModuleNotFoundError, ImportError):
     pass
 
-from sila_cetoni.core.device_drivers.abc import BatteryInterface
-from sila_cetoni.core.device_drivers.mobdos_battery import MobDosBattery
-
 from .application_configuration import ApplicationConfiguration
 from .configuration import DeviceConfiguration
 from .device import Device
@@ -54,7 +51,14 @@ from .singleton import ABCSingleton
 if TYPE_CHECKING:
     from ....device_driver_abc import DeviceDriverABC
     from .cetoni_device_configuration import CetoniDeviceConfiguration
-    from .device import BalanceDevice, HeatingCoolingDevice, PurificationDevice, StirringDevice, ThirdPartyDevice
+    from .device import (
+        BalanceDevice,
+        HeatingCoolingDevice,
+        PurificationDevice,
+        StirringDevice,
+        ThirdPartyDevice,
+        CetoniMobDosDevice,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -117,21 +121,13 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
     __bus_monitoring_thread: threading.Thread
 
-    __battery: Optional[MobDosBattery]
+    __mobdos: Optional[CetoniMobDosDevice]
     __MAX_SECONDS_WITHOUT_BATTERY = 20
 
     def __init__(self, config: CetoniDeviceConfiguration) -> None:
         super().__init__(config)
 
-        if self._config.has_battery:
-            # we don't have any other specific battery drivers yet
-            self.__battery = MobDosBattery()
-        else:
-            self.__battery = None
-
-    @property
-    def battery(self) -> Optional[BatteryInterface]:
-        return self.__battery
+        self.__mobdos = list(filter(lambda d: d.device_type == "mobdos", self._config.devices))[0]
 
     def start(self):
         """
@@ -149,8 +145,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         logger.info("Stopping CETONI application system...")
         previous_state = self._state
         self._state = ApplicationSystemState.SHUTDOWN
-        if self._config.has_battery and self.__battery is not None:
-            self.__battery.stop()
+        if self._config.has_battery and self.__mobdos is not None:
+            self.__mobdos.battery.stop()
         logger.info("Closing bus...")
         if previous_state.is_operational():
             self._config.stop_bus()
@@ -219,18 +215,19 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
             if (
                 self._state.is_stopped()
-                and self.__battery is not None
-                and not self.__battery.is_secondary_source_connected
+                and self.__mobdos.battery is not None
+                and not self.__mobdos.battery.is_secondary_source_connected
             ):
                 seconds_stopped += 1
                 if seconds_stopped > self.__MAX_SECONDS_WITHOUT_BATTERY:
                     logger.info("Shutting down because battery has been removed for too long")
                     self.shutdown()
 
-            if self.__battery is not None:
+            if self.__mobdos.battery is not None:
                 logger.debug(
                     f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}, "
-                    f"bat conn: {self.__battery.is_connected}, ext conn {self.__battery.is_secondary_source_connected}"
+                    f"bat conn: {self.__mobdos.battery.is_connected}, "
+                    f"ext conn {self.__mobdos.battery.is_secondary_source_connected}"
                 )
             else:
                 logger.debug(f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}")
@@ -310,10 +307,6 @@ class ApplicationSystem(ApplicationSystemBase):
             except AttributeError:
                 # some devices might not be completely setup yet, i.e. they don't have a `device` that can be `stop`ped
                 continue
-
-    @property
-    def battery(self) -> Optional[BatteryInterface]:
-        return self.__cetoni_application_system.battery if self.__cetoni_application_system is not None else None
 
     @property
     def all_devices(self) -> List[Device]:
