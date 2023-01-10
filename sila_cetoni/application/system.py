@@ -32,7 +32,7 @@ import threading
 import time
 from abc import abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 # import qmixsdk
 try:
@@ -42,6 +42,8 @@ try:
 except (ModuleNotFoundError, ImportError):
     pass
 
+from sila2.framework import UndefinedExecutionError
+
 from .application_configuration import ApplicationConfiguration
 from .configuration import DeviceConfiguration
 from .device import Device
@@ -49,6 +51,8 @@ from .server_configuration import ServerConfiguration
 from .singleton import ABCSingleton
 
 if TYPE_CHECKING:
+    from sila2.framework import Command, Feature, Property
+
     from ....device_driver_abc import DeviceDriverABC
     from .cetoni_device_configuration import CetoniDeviceConfiguration
     from .device import (
@@ -640,3 +644,55 @@ class ApplicationSystem(ApplicationSystemBase):
                         logger.debug(f"Found {description} channel {i} named {channels[-1].name}")
 
                 device.io_channels = channels
+
+
+class SystemNotOperationalError(UndefinedExecutionError):
+    def __init__(self, command_or_property: Union[Command, Property]):
+        super().__init__(
+            "Cannot {} {} because the system is not in an operational state.".format(
+                "execute" if isinstance(command_or_property, Command) else "read from",
+                command_or_property.fully_qualified_identifier,
+            )
+        )
+
+
+def requires_operational_system(feature: Feature):
+    """
+    Function decorator that checks whether the global `ApplicationSystem` is in an operational state before executing
+    the decorated function. If the system is not in an operation state then a `SystemNotOperationalError` will be raised
+    with the Fully Qualified Identifier of the Command/Property that was tried to be accessed.
+
+    Parameters
+    ----------
+    feature: Feature
+        The Feature that the decorated function belongs to (needed when raising the error)
+    """
+
+    def decorator(func):
+        """
+        The actual decorator
+
+        Parameters
+        ----------
+        func: Callable
+            The decorated function
+        """
+
+        def wrapper(*args, **kwargs):
+            """
+            The function wrapper around `func`
+
+            Parameters
+            ----------
+            *args: Tuple
+                Positional arguments passed to `func`
+            **kwargs: Tuple
+                Keyword arguments passed to `func`
+            """
+            if not ApplicationSystem().state.is_operational():
+                raise SystemNotOperationalError(feature[func.__name__])
+            func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
