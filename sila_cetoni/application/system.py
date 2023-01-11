@@ -149,8 +149,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         logger.info("Stopping CETONI application system...")
         previous_state = self._state
         self._state = ApplicationSystemState.SHUTDOWN
-        if self._config.has_battery and self.__mobdos is not None:
-            self.__mobdos.battery.stop()
+        if self.__mobdos is not None:
+            self.__mobdos.stop()
         logger.info("Closing bus...")
         if previous_state.is_operational():
             self._config.stop_bus()

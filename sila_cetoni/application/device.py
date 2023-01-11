@@ -36,6 +36,7 @@ from typing_extensions import Self
 if TYPE_CHECKING:
     from sila_cetoni.io.device_drivers import cetoni
     from sila_cetoni.mobdos.device_drivers.mobdos_battery import MobDosBattery
+    from sila_cetoni.mobdos.device_drivers.mobdos_magnet import MobDosMagnet
 
 from .application_configuration import SCHEMA
 
@@ -290,6 +291,7 @@ try:
         """
 
         battery: MobDosBattery
+        magnet: MobDosMagnet
 
         def __init__(self, name: str, handle: qmixpump.Pump) -> None:
             super().__init__(name, handle)
@@ -297,8 +299,17 @@ try:
             self._device_type = "mobdos"
 
             from sila_cetoni.mobdos.device_drivers.mobdos_battery import MobDosBattery
+            from sila_cetoni.mobdos.device_drivers.mobdos_magnet import MobDosMagnet
 
             self.battery = MobDosBattery()
+            self.magnet = MobDosMagnet()
+
+        def stop(self) -> None:
+            """
+            Stops the device
+            """
+            self.battery.stop()
+            self.magnet.stop()
 
     class CetoniAxisSystemDevice(CetoniDevice[qmixmotion.AxisSystem]):
         """

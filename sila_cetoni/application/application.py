@@ -236,6 +236,7 @@ class Application(Singleton):
                     valve=mobdos.valves[0] if len(mobdos.valves) > 0 else None,
                     io_channels=mobdos.io_channels,
                     battery=mobdos.battery,
+                    magnet=mobdos.magnet,
                     **common_args,
                 )
             elif device.device_type == "axis_system":
