@@ -115,6 +115,10 @@ class ApplicationSystemBase(ABCSingleton):
     def stop(self):
         raise NotImplementedError()
 
+    @abstractmethod
+    def shutdown(self):
+        raise NotImplementedError()
+
 
 class CetoniApplicationSystem(ApplicationSystemBase):
     """
@@ -311,6 +315,13 @@ class ApplicationSystem(ApplicationSystemBase):
             except AttributeError:
                 # some devices might not be completely setup yet, i.e. they don't have a `device` that can be `stop`ped
                 continue
+
+    def shutdown(self):
+        logger.info("Shutting down application system")
+        self._state = ApplicationSystemState.SHUTDOWN
+        if self.__cetoni_application_system is not None:
+            self.__cetoni_application_system.shutdown()
+        self.stop()
 
     @property
     def all_devices(self) -> List[Device]:
