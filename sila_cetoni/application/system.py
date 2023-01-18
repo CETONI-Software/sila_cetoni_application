@@ -399,6 +399,48 @@ class ApplicationSystem(ApplicationSystemBase):
             return self._config.devices + self.__cetoni_application_system.device_config.devices
         return self._config.devices
 
+    @staticmethod
+    def ensure_operational(feature: Feature):
+        """
+        Function decorator that checks whether the global `ApplicationSystem` is in an operational state before executing
+        the decorated function. If the system is not in an operation state then a `SystemNotOperationalError` will be raised
+        with the Fully Qualified Identifier of the Command/Property that was tried to be accessed.
+
+        Parameters
+        ----------
+        feature: Feature
+            The Feature that the decorated function belongs to (needed when raising the error)
+        """
+
+        def decorator(func):
+            """
+            The actual decorator
+
+            Parameters
+            ----------
+            func: Callable
+                The decorated function
+            """
+
+            def wrapper(*args, **kwargs):
+                """
+                The function wrapper around `func`
+
+                Parameters
+                ----------
+                *args: Tuple
+                    Positional arguments passed to `func`
+                **kwargs: Tuple
+                    Keyword arguments passed to `func`
+                """
+                if not ApplicationSystem().state.is_operational():
+                    raise SystemNotOperationalError(feature[func.__name__])
+                func(*args, **kwargs)
+
+            return wrapper
+
+        return decorator
+
     def ___set_device_driver_simulated_or_raise(self, device: ThirdPartyDevice, err: Exception) -> DeviceDriverABC:
         """
         Swaps the device driver of the given `device` to a simulated driver or raises `err` if this is not possible
@@ -732,45 +774,3 @@ class SystemNotOperationalError(UndefinedExecutionError):
                 command_or_property.fully_qualified_identifier,
             )
         )
-
-
-def requires_operational_system(feature: Feature):
-    """
-    Function decorator that checks whether the global `ApplicationSystem` is in an operational state before executing
-    the decorated function. If the system is not in an operation state then a `SystemNotOperationalError` will be raised
-    with the Fully Qualified Identifier of the Command/Property that was tried to be accessed.
-
-    Parameters
-    ----------
-    feature: Feature
-        The Feature that the decorated function belongs to (needed when raising the error)
-    """
-
-    def decorator(func):
-        """
-        The actual decorator
-
-        Parameters
-        ----------
-        func: Callable
-            The decorated function
-        """
-
-        def wrapper(*args, **kwargs):
-            """
-            The function wrapper around `func`
-
-            Parameters
-            ----------
-            *args: Tuple
-                Positional arguments passed to `func`
-            **kwargs: Tuple
-                Keyword arguments passed to `func`
-            """
-            if not ApplicationSystem().state.is_operational():
-                raise SystemNotOperationalError(feature[func.__name__])
-            func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
