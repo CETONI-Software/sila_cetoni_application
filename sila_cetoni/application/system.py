@@ -296,7 +296,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 seconds_stopped += 1
                 if seconds_stopped > self.__MAX_SECONDS_WITHOUT_BATTERY:
                     logger.info("Shutting down because battery has been removed for too long")
-                    self.shutdown(True)
+                    ApplicationSystem().shutdown(True)
 
             if self.__mobdos.battery is not None:
                 logger.debug(
