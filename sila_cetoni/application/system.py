@@ -26,12 +26,14 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
+import datetime
 import logging
 import os
 import threading
 import time
 from abc import abstractmethod
 from enum import Enum
+from threading import Thread
 from typing import TYPE_CHECKING, List, Optional, Union
 
 # import qmixsdk
@@ -57,11 +59,11 @@ if TYPE_CHECKING:
     from .cetoni_device_configuration import CetoniDeviceConfiguration
     from .device import (
         BalanceDevice,
+        CetoniMobDosDevice,
         HeatingCoolingDevice,
         PurificationDevice,
         StirringDevice,
         ThirdPartyDevice,
-        CetoniMobDosDevice,
     )
 
 logger = logging.getLogger(__name__)
@@ -130,15 +132,36 @@ class CetoniApplicationSystem(ApplicationSystemBase):
     __bus_monitoring_thread: threading.Thread
 
     __mobdos: Optional[CetoniMobDosDevice]
-    __MAX_SECONDS_WITHOUT_BATTERY = 20
+    __MAX_SECONDS_WITHOUT_BATTERY: int = 20
+    __MAX_TIME_WITHOUT_TRAFFIC: datetime.timedelta = datetime.timedelta(minutes=10)
+    __shutdown_time: datetime.datetime = datetime.datetime.now() + __MAX_TIME_WITHOUT_TRAFFIC
+    __traffic_monitoring_thread: Thread
 
     def __init__(self, config: CetoniDeviceConfiguration) -> None:
         super().__init__(config)
 
         try:
             self.__mobdos = list(filter(lambda d: d.device_type == "mobdos", self._config.devices))[0]
+
+            def monitor_traffic():
+                while not self._state.shutting_down():
+                    time.sleep(5)
+                    if (
+                        self.__mobdos is not None
+                        and not self.__mobdos.battery.is_secondary_source_connected
+                        and datetime.datetime.now() >= self.__shutdown_time
+                    ):
+                        logger.info(
+                            f"Did not receive any requests for the last "
+                            f"{self.__MAX_TIME_WITHOUT_TRAFFIC.total_seconds() / 60} minutes - shutting down"
+                        )
+                        ApplicationSystem().shutdown()
+
+            self.__traffic_monitoring_thread = Thread(target=monitor_traffic, name="TrafficMonitoringThread")
+            self.__traffic_monitoring_thread.start()
         except IndexError:
             self.__mobdos = None
+            self.__traffic_monitoring_thread = None
 
     def start(self):
         """
@@ -158,6 +181,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         self._state = ApplicationSystemState.SHUTDOWN
         if self.__mobdos is not None:
             self.__mobdos.stop()
+        if self.__traffic_monitoring_thread is not None:
+            self.__traffic_monitoring_thread.join()
         logger.info("Closing bus...")
         if previous_state.is_operational():
             self._config.stop_bus()
@@ -176,6 +201,39 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         if self._config.has_battery:
             logger.info(f"Shutting down {'forced' if force else ''}...")
             os.system(f"({'sleep 30 &&' if not force else ''} sudo shutdown now) &")
+
+    @classmethod
+    def monitor_traffic(cls, klass):
+        """
+        Class decorator that monitors the decorated class's methods and detects whether the methods are called or not
+
+        This information is used to shut down the device in case there were no Commands or Property requests received for a
+        certain amount of time to save battery when the device is battery powered. If the device is not battery powered then
+        the device is not automatically shut down.
+
+        Inspired by: https://stackoverflow.com/a/2704528/12780516
+
+        Parameters
+        ----------
+        klass: Type
+            The decorated class
+        """
+
+        def __getattribute__(self, name):
+            attr = object.__getattribute__(self, name)
+            # the "update_" functions are called by the implementations, not by a client
+            if callable(attr) and not attr.__name__.startswith("update_"):
+
+                def wrapper(*args, **kwargs):
+                    cls.__shutdown_time = datetime.datetime.now() + cls.__MAX_TIME_WITHOUT_TRAFFIC
+                    logger.debug(f"Received call to {attr.__name__} - bumping shutdown time to {cls.__shutdown_time!s}")
+                    return attr(*args, **kwargs)
+
+                return wrapper
+            return attr
+
+        klass.__getattribute__ = __getattribute__
+        return klass
 
     def __start_bus_monitoring(self):
         """
