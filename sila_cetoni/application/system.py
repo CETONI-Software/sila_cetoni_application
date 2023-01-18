@@ -116,7 +116,7 @@ class ApplicationSystemBase(ABCSingleton):
         raise NotImplementedError()
 
     @abstractmethod
-    def shutdown(self):
+    def shutdown(self, force: bool = False):
         raise NotImplementedError()
 
 
@@ -163,13 +163,19 @@ class CetoniApplicationSystem(ApplicationSystemBase):
             self._config.stop_bus()
         self._config.close_bus()
 
-    def shutdown(self):
+    def shutdown(self, force: bool = False):
         """
         Shuts down the operating system if we are battery powered
+
+        Parameters
+        ----------
+        force: bool
+            If `True` immediately shuts down the system without attempting to stop the sila-cetoni process first,
+            otherwise the process is stopped first and then the system is shut down
         """
         if self._config.has_battery:
-            logger.info("Shutting down...")
-            os.system("sudo shutdown now")
+            logger.info(f"Shutting down {'forced' if force else ''}...")
+            os.system(f"({'sleep 30 &&' if not force else ''} sudo shutdown now) &")
 
     def __start_bus_monitoring(self):
         """
@@ -232,7 +238,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 seconds_stopped += 1
                 if seconds_stopped > self.__MAX_SECONDS_WITHOUT_BATTERY:
                     logger.info("Shutting down because battery has been removed for too long")
-                    self.shutdown()
+                    self.shutdown(True)
 
             if self.__mobdos.battery is not None:
                 logger.debug(
@@ -319,11 +325,11 @@ class ApplicationSystem(ApplicationSystemBase):
                 # some devices might not be completely setup yet, i.e. they don't have a `device` that can be `stop`ped
                 continue
 
-    def shutdown(self):
+    def shutdown(self, force: bool = False):
         logger.info("Shutting down application system")
         self._state = ApplicationSystemState.SHUTDOWN
         if self.__cetoni_application_system is not None:
-            self.__cetoni_application_system.shutdown()
+            self.__cetoni_application_system.shutdown(force)
         self.stop()
 
     @property
