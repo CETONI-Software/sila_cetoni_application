@@ -135,7 +135,10 @@ class CetoniApplicationSystem(ApplicationSystemBase):
     def __init__(self, config: CetoniDeviceConfiguration) -> None:
         super().__init__(config)
 
-        self.__mobdos = list(filter(lambda d: d.device_type == "mobdos", self._config.devices))[0]
+        try:
+            self.__mobdos = list(filter(lambda d: d.device_type == "mobdos", self._config.devices))[0]
+        except IndexError:
+            self.__mobdos = None
 
     def start(self):
         """
