@@ -198,8 +198,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
             otherwise the process is stopped first and then the system is shut down
         """
         if self._config.has_battery:
-            logger.info(f"Shutting down {'forced' if force else ''}...")
-            os.system(f"({'sleep 30 &&' if not force else ''} sudo shutdown now) &")
+            logger.info(f"Shutting down {'forced' if force else 'gracefully'}...")
+            os.system(f"sudo shutdown {'now' if force else '+1'} &")
 
     @classmethod
     def monitor_traffic(cls, klass):
