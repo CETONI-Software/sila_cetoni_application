@@ -182,8 +182,6 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         self._state = ApplicationSystemState.SHUTDOWN
         if self.__mobdos is not None:
             self.__mobdos.stop()
-        if self.__traffic_monitoring_thread is not None:
-            self.__traffic_monitoring_thread.join()
         logger.info("Closing bus...")
         if previous_state.is_operational():
             self._config.stop_bus()
