@@ -33,6 +33,7 @@ import threading
 import time
 from abc import abstractmethod
 from enum import Enum
+from functools import wraps
 from threading import Thread
 from typing import TYPE_CHECKING, List, Optional, Union
 
@@ -224,6 +225,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
             # the "update_" functions are called by the implementations, not by a client
             if callable(attr) and not attr.__name__.startswith("update_"):
 
+                @wraps(attr)
                 def wrapper(*args, **kwargs):
                     cls.__shutdown_time = datetime.datetime.now() + cls.__MAX_TIME_WITHOUT_TRAFFIC
                     logger.debug(f"Received call to {attr.__name__} - bumping shutdown time to {cls.__shutdown_time!s}")
@@ -422,6 +424,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 The decorated function
             """
 
+            @wraps(func)
             def wrapper(*args, **kwargs):
                 """
                 The function wrapper around `func`
