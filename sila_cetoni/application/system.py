@@ -415,7 +415,10 @@ class ApplicationSystem(ApplicationSystemBase):
         self._state = ApplicationSystemState.SHUTDOWN
         if self.__cetoni_application_system is not None:
             self.__cetoni_application_system.shutdown(force)
-        self.stop()
+
+        from .application import Application  # delayed import to break dependency cycle
+
+        Application().stop()
 
     @property
     def all_devices(self) -> List[Device]:
