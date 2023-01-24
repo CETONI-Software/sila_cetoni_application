@@ -162,6 +162,7 @@ class Application(Singleton):
                     task()
                 except Empty:
                     pass
+            return True
         except KeyboardInterrupt:
             print()
             self.stop()
