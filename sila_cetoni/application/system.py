@@ -26,12 +26,12 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
-import datetime
 import logging
 import os
 import threading
 import time
 from abc import abstractmethod
+from datetime import datetime, timedelta
 from enum import Enum
 from functools import wraps
 from threading import Thread
@@ -133,9 +133,9 @@ class CetoniApplicationSystem(ApplicationSystemBase):
     __bus_monitoring_thread: threading.Thread
 
     __mobdos: Optional[CetoniMobDosDevice]
-    __MAX_SECONDS_WITHOUT_BATTERY: int = 20
-    __MAX_TIME_WITHOUT_TRAFFIC: datetime.timedelta = datetime.timedelta(minutes=10)
-    __shutdown_time: datetime.datetime = datetime.datetime.now() + __MAX_TIME_WITHOUT_TRAFFIC
+    __MAX_TIME_WITHOUT_BATTERY: timedelta = timedelta(seconds=20)
+    __MAX_TIME_WITHOUT_TRAFFIC: timedelta = timedelta(minutes=10)
+    __shutdown_time: datetime = datetime.now() + __MAX_TIME_WITHOUT_TRAFFIC
     __traffic_monitoring_thread: Thread
 
     def __init__(self, config: CetoniDeviceConfiguration) -> None:
@@ -150,7 +150,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                     if (
                         self.__mobdos is not None
                         and not self.__mobdos.battery.is_secondary_source_connected
-                        and datetime.datetime.now() >= self.__shutdown_time
+                        and datetime.now() >= self.__shutdown_time
                     ):
                         logger.info(
                             f"Did not receive any requests for the last "
@@ -225,7 +225,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
                 @wraps(attr)
                 def wrapper(*args, **kwargs):
-                    cls.__shutdown_time = datetime.datetime.now() + cls.__MAX_TIME_WITHOUT_TRAFFIC
+                    cls.__shutdown_time = datetime.now() + cls.__MAX_TIME_WITHOUT_TRAFFIC
                     logger.debug(f"Received call to {attr.__name__} - bumping shutdown time to {cls.__shutdown_time!s}")
                     return attr(*args, **kwargs)
 
@@ -294,7 +294,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 and not self.__mobdos.battery.is_secondary_source_connected
             ):
                 seconds_stopped += 1
-                if seconds_stopped > self.__MAX_SECONDS_WITHOUT_BATTERY:
+                if seconds_stopped > self.__MAX_TIME_WITHOUT_BATTERY.total_seconds():
                     logger.info("Shutting down because battery has been removed for too long")
                     ApplicationSystem().shutdown(True)
 
