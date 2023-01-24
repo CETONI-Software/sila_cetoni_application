@@ -21,6 +21,15 @@ Types of changes
 ### Added
 
 - `CetoniMobDosDevice` to represent a CETONI mobile dosage unit
+- `SystemNotOperationalError` and `ApplicationSystem.ensure_operational` decorator to simplify raising an error when the `ApplicationSystem` is not in an operational state
+- All `ApplicationSystem` classes gained the `shutdown` method to completely shutdown the application and the OS
+- `CetoniApplicationSystem.monitor_traffic` decorator to mark feature implementation classes as "monitored". If no Command/Property has been called on the monitored Features then the application will automatically shut down on CETONI's MobDos (only if it is battery powered).
+- New `"max_time_without_battery"` and `"max_time_without_traffic"` configuration options for the JSON config file (only applicable to CETONI MobDos devices)
+
+### Fixed
+
+- CETONI SDK's new 'src' subfolder layout is now correctly supported
+- A regenerated SSL certificate wasn't stored
 
 ## v1.8.0
 
