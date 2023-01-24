@@ -224,12 +224,17 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         def __getattribute__(self, name):
             attr = object.__getattribute__(self, name)
             # the "update_" functions are called by the implementations, not by a client
-            if callable(attr) and not attr.__name__.startswith("update_"):
+            # the "get_calls_affected_by_" functions are called by the feature_implementation_servicer, not by a client
+            # "stop" is called during server shutdown, not by a client
+            if callable(attr) and not attr.__name__.startswith(("update_", "get_calls_affected_by_", "stop")):
 
                 @wraps(attr)
                 def wrapper(*args, **kwargs):
                     cls.__shutdown_time = datetime.now() + cls.__application_config.cetoni_max_time_without_traffic
-                    logger.debug(f"Received call to {attr.__name__} - bumping shutdown time to {cls.__shutdown_time!s}")
+                    logger.debug(
+                        f"Received call to {self.__class__.__name__}.{attr.__name__} - bumping shutdown time to "
+                        f"{cls.__shutdown_time!s}"
+                    )
                     return attr(*args, **kwargs)
 
                 return wrapper
