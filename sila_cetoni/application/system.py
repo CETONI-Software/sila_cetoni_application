@@ -372,6 +372,16 @@ class ApplicationSystem(ApplicationSystemBase):
         logger.info("Application system started")
 
     def stop(self):
+
+        if threading.current_thread() is not threading.main_thread():
+            # stop has to be executed in main thread because stopping the CetoniApplicationSystem has to run in the main
+            # thread (because it was started from the main thread as well)
+
+            from .application import Application, Task  # delayed import to break dependency cycle
+
+            Application().tasks_queue.put(Task(self.stop))
+            return
+
         logger.info("Stopping application system...")
         self._state = ApplicationSystemState.SHUTDOWN
         if self.__cetoni_application_system is not None:
@@ -384,6 +394,15 @@ class ApplicationSystem(ApplicationSystemBase):
                 continue
 
     def shutdown(self, force: bool = False):
+
+        if threading.current_thread() is not threading.main_thread():
+            # shutdown has to be executed in main thread because it calls `stop()` which has to run in the main thread
+
+            from .application import Application, Task  # delayed import to break dependency cycle
+
+            Application().tasks_queue.put(Task(self.shutdown, force))
+            return
+
         logger.info("Shutting down application system")
         self._state = ApplicationSystemState.SHUTDOWN
         if self.__cetoni_application_system is not None:

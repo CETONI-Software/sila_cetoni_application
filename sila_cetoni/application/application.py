@@ -28,9 +28,9 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
-import time
+from queue import Empty, Queue
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Callable, Dict, List
 
 import typer
 from sila2.server import SilaServer
@@ -60,6 +60,40 @@ DEFAULT_BASE_PORT = 50051
 logger = logging.getLogger(__name__)
 
 
+class Task:
+    """
+    A task that can be put into a `Queue` for execution in the main application thread
+
+    Consists of a function and optional arguments and keyword arguments.
+    Provides a `__call__` implementation that will call the function with those arguments and keyword arguments
+
+    Inspired by https://stackoverflow.com/a/683755/12780516
+    """
+
+    def __init__(self, fn: Callable, *args, **kwargs):
+        """
+        Create a new `Task`
+
+        Parameters
+        ----------
+        fn: Callable
+            The function that will be called when this `Task` is executed
+        *args: Tuple
+            Arguments to the function `fn`
+        **kwargs: Dict
+            Keyword arguments to the function `fn`
+        """
+        if not callable(fn):
+            raise TypeError(f"Cannot create Task from non-callable {fn!r}")
+
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self):
+        return self.fn(*self.args, **self.kwargs)
+
+
 class Application(Singleton):
     """
     Encompasses the main application logic
@@ -70,14 +104,25 @@ class Application(Singleton):
     __config: ApplicationConfiguration  # parsed from `config_file`
     __servers: List[SilaServer]
 
+    __tasks_queue: Queue[Task]
+
     def __init__(self, config_file_path: Path):
 
         self.__config = ApplicationConfiguration(config_file_path.stem, config_file_path)
         self.__servers = []
 
+        self.__tasks_queue = Queue()
+
     @property
     def config(self) -> ApplicationConfiguration:
         return self.__config
+
+    @property
+    def tasks_queue(self) -> Queue[Task]:
+        """
+        Returns the tasks queue that can be used to run tasks in the main thread
+        """
+        return self.__tasks_queue
 
     def run(self) -> bool:
         """
@@ -112,7 +157,11 @@ class Application(Singleton):
             self.__start_servers()
             print("Press Ctrl-C to stop...", flush=True)
             while not self.__system.state.shutting_down():
-                time.sleep(1)
+                try:
+                    task = self.__tasks_queue.get(block=True, timeout=1)
+                    task()
+                except Empty:
+                    pass
         except KeyboardInterrupt:
             print()
             self.stop()
