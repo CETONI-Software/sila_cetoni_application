@@ -202,7 +202,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         """
         if self._config.has_battery:
             logger.info(f"Shutting down {'forced' if force else 'gracefully'}...")
-            os.system(f"sudo shutdown {'now' if force else '+1'} &")
+            os.system(f"({'' if force else 'sleep 15'}; sudo shutdown now) &")
 
     @classmethod
     def monitor_traffic(cls, klass):
