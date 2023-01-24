@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import jsonschema
 import jsonschema.exceptions
+from isodate import parse_duration
 
 from ..application import resource_dir
 
@@ -51,6 +53,8 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
     __regenerate_certificates: bool
     __scan_devices: bool
     __cetoni_device_config_path: Optional[Path]
+    __cetoni_max_time_without_battery: timedelta
+    __cetoni_max_time_without_traffic: timedelta
 
     __SCHEMA_PROPERTIES = SCHEMA["definitions"]["DeviceConfiguration"]["properties"]
     DEFAULT_SERVER_IP: str = LOCAL_IP
@@ -59,6 +63,14 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
     DEFAULT_REGENERATE_CERTIFICATES: bool = __SCHEMA_PROPERTIES["regenerate_certificates"]["default"]
     DEFAULT_SCAN_DEVICES: bool = __SCHEMA_PROPERTIES["scan_devices"]["default"]
     DEFAULT_SIMULATE_MISSING: bool = __SCHEMA_PROPERTIES["simulate_missing"]["default"]
+
+    __CETONI_SCHEMA_PROPERTIES = SCHEMA["definitions"]["CetoniDevices"]["properties"]
+    DEFAULT_MAX_TIME_WITHOUT_BATTERY: timedelta = parse_duration(
+        __CETONI_SCHEMA_PROPERTIES["max_time_without_battery"]["default"]
+    )
+    DEFAULT_MAX_TIME_WITHOUT_TRAFFIC: timedelta = parse_duration(
+        __CETONI_SCHEMA_PROPERTIES["max_time_without_traffic"]["default"]
+    )
 
     def __init__(self, name: str, config_file_path: Path) -> None:
         super().__init__(name, config_file_path)
@@ -86,6 +98,19 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
                 )
                 self.__scan_devices = config.get("scan_devices", self.DEFAULT_SCAN_DEVICES)
                 self.__simulate_missing = config.get("simulate_missing", self.DEFAULT_SIMULATE_MISSING)
+
+                try:
+                    self.__cetoni_max_time_without_battery = parse_duration(
+                        config["cetoni_devices"]["max_time_without_battery"]
+                    )
+                except KeyError:
+                    self.__cetoni_max_time_without_battery = self.DEFAULT_MAX_TIME_WITHOUT_BATTERY
+                try:
+                    self.__cetoni_max_time_without_traffic = parse_duration(
+                        config["cetoni_devices"]["max_time_without_traffic"]
+                    )
+                except KeyError:
+                    self.__cetoni_max_time_without_traffic = self.DEFAULT_MAX_TIME_WITHOUT_TRAFFIC
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as err:
             raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}")
 
@@ -205,3 +230,11 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
     @property
     def cetoni_device_config_path(self) -> Optional[Path]:
         return self.__cetoni_device_config_path
+
+    @property
+    def cetoni_max_time_without_battery(self) -> timedelta:
+        return self.__cetoni_max_time_without_battery
+
+    @property
+    def cetoni_max_time_without_traffic(self) -> timedelta:
+        return self.__cetoni_max_time_without_traffic
