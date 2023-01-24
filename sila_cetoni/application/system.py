@@ -148,7 +148,6 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
             def monitor_traffic():
                 while not self._state.shutting_down():
-                    time.sleep(5)
                     if (
                         self.__mobdos is not None
                         and not self.__mobdos.battery.is_secondary_source_connected
@@ -160,6 +159,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                             f"- shutting down"
                         )
                         ApplicationSystem().shutdown()
+                    time.sleep(5)
 
             self.__traffic_monitoring_thread = Thread(target=monitor_traffic, name="TrafficMonitoringThread")
             self.__traffic_monitoring_thread.start()
