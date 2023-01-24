@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2019-09/schema#",
     "$ref": "#/definitions/DeviceConfiguration",
     "definitions": {
         "DeviceConfiguration": {
@@ -100,6 +100,29 @@
                 "device_config_path": {
                     "type": "string",
                     "title": "Path to a valid CETONI device configuration created with the CETONI Elements software"
+                },
+                "max_time_without_battery": {
+                    "type": "string",
+                    "format": "duration",
+                    "title": "How long the device will stay on at most without a battery (default: 20 seconds)",
+                    "default": "PT20S",
+                    "examples": [
+                        "PT0.5H",
+                        "PT30M",
+                        "PT10M30S"
+                    ]
+                },
+                "max_time_without_traffic": {
+                    "type": "string",
+                    "format": "duration",
+                    "title": "How long the device will stay on without any SiLA Command calls or Property requests to non-standard features (default: 10 minutes)",
+                    "default": "PT10M",
+                    "examples": [
+                        "P2D",
+                        "PT0.5H",
+                        "PT30M",
+                        "P3DT1H5M30S"
+                    ]
                 }
             },
             "required": [
