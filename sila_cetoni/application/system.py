@@ -651,9 +651,9 @@ class ApplicationSystem(ApplicationSystemBase):
             elif device.manufacturer == "Memmert":
                 device: MemmertOvenDevice  # typing
                 logger.debug(f"Connecting to Memmert Oven at {device.server_url!r}")
-                Memmertoven = memmert_oven.MemmertOvenSim if device.simulated else memmert_oven.MemmertOven
+                MemmertOven = memmert_oven.MemmertOvenSim if device.simulated else memmert_oven.MemmertOven
                 try:
-                    device.device = Memmertoven(device.server_url)
+                    device.device = MemmertOven(device.server_url)
                 except memmert_oven.MemmertOvenNotFoundException as err:
                     device.device = self.___set_device_driver_simulated_or_raise(device, err)
 
