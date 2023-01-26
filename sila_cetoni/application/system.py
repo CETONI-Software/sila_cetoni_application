@@ -223,6 +223,11 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
         def __getattribute__(self, name):
             attr = object.__getattribute__(self, name)
+            
+            if cls.__application_config is None:
+                # there is not `CetoniApplicationSystem` instance so we don't need/want to monitor for traffic
+                return attr
+
             # the "update_" functions are called by the implementations, not by a client
             # the "get_calls_affected_by_" functions are called by the feature_implementation_servicer, not by a client
             # "stop" is called during server shutdown, not by a client
