@@ -486,6 +486,15 @@ class ApplicationSystem(ApplicationSystemBase):
                         f"Could not connect to balance on {device.port}, setting device simulated", exc_info=err
                     )
                     return sartorius_balance.SartoriusBalanceSim(device.port)
+            elif device.device_type == "lcms":
+                from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
+
+                if isinstance(err, shimadzu_lcms2020.LabSolutionsStartException):
+                    logger.warning(
+                        f"Could not connect to Shimadzu LC/MS, setting device simulated",
+                        exc_info=err,
+                    )
+                    return shimadzu_lcms2020.ShimadzuLCMS2020Sim()
             elif device.device_type == "heating_cooling":
                 if device.manufacturer == "Huber":
                     from sila_cetoni.heating_cooling.device_drivers import huber_chiller
@@ -597,10 +606,18 @@ class ApplicationSystem(ApplicationSystemBase):
                 logger.warning(msg, exc_info=err)
             return
 
+        devices: List[LCMSDevice]  # typing
+
         for lcms in devices:
             if lcms.manufacturer == "Shimadzu":
                 logger.debug(f"Connecting to LC/MS {lcms.name!r}")
-                lcms.device = shimadzu_lcms2020.ShimadzuLCMS2020()
+                ShimadzuLCMS2020 = (
+                    shimadzu_lcms2020.ShimadzuLCMS2020Sim if lcms.simulated else shimadzu_lcms2020.ShimadzuLCMS2020
+                )
+                try:
+                    lcms.device = ShimadzuLCMS2020()
+                except shimadzu_lcms2020.LabSolutionsStartException as err:
+                    lcms.device = self.___set_device_driver_simulated_or_raise(lcms, err)
 
         if scan:
             logger.debug("Looking for LC/MS")

@@ -25,6 +25,7 @@ Types of changes
 - All `ApplicationSystem` classes gained the `shutdown` method to completely shutdown the application and the OS
 - `CetoniApplicationSystem.monitor_traffic` decorator to mark feature implementation classes as "monitored". If no Command/Property has been called on the monitored Features then the application will automatically shut down on CETONI's MobDos (only if it is battery powered).
 - New `"max_time_without_battery"` and `"max_time_without_traffic"` configuration options for the JSON config file (only applicable to CETONI MobDos devices)
+- Support for simulated Shimadzu 2020 LC/MS
 
 ### Fixed
 
