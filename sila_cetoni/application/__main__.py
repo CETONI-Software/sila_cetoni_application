@@ -31,7 +31,7 @@ def show_version(value: bool):
 
 _LOGGING_FORMAT = (
     "%(asctime)s [%(threadName)-{thread_name_len}.{thread_name_len}s] %(levelname)-8s| "
-    "%(name)s %(module)s.%(funcName)s: %(message)s"
+    "%(name)s %(module)s.%(funcName)s (%(lineno)s): %(message)s"
 )
 
 
