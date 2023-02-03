@@ -67,7 +67,7 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         # The order is important here! Many devices have I/O channels but are not pure I/O devices (similarly, pumps
         # might have a valve but they're not a valve device). That's why valves have to be detected after pumps and I/O
         # devices have to be detected last (since then we can guarantee that there is no possibility for an I/O channel
-        # to belong to an I/O device).
+        # to not belong to an I/O device).
         self.__create_pump_devices()
         self.__create_axis_systems_devices()
         self.__create_valve_devices()
