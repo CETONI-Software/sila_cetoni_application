@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Generic, List,TypeVar
 
 from sila_cetoni.device_driver_abc import DeviceDriverABC
 from typing_extensions import Self
@@ -211,10 +211,10 @@ try:
             The type of the device handle (e.g. `qmixpump.Pump`)
         """
 
-        _device_handle: Type[_QmixBusDeviceT]
+        _device_handle: _QmixBusDeviceT
         _device_properties: Dict[str, Any]
 
-        def __init__(self, name: str, device_type: str = "", handle: Type[_QmixBusDeviceT] = None) -> None:
+        def __init__(self, name: str, device_type: str = "", handle: _QmixBusDeviceT = None) -> None:
             super().__init__(name=name, device_type=device_type, manufacturer="CETONI", simulated=False)
 
             self._device_handle = handle
@@ -235,7 +235,7 @@ try:
             )
 
         @property
-        def device_handle(self) -> Type[_QmixBusDeviceT]:
+        def device_handle(self) -> _QmixBusDeviceT:
             return self._device_handle
 
         @property
@@ -367,7 +367,7 @@ class ThirdPartyDevice(Device, Generic[_DeviceInterfaceT]):
             The type of the device driver interface (e.g. `BalanceInterface`)
     """
 
-    _device: Type[_DeviceInterfaceT]
+    _device: _DeviceInterfaceT
 
     def __new__(cls, name: str, json_data: Dict, *args, **kwargs) -> Self:
         device_type = json_data["type"]
@@ -407,11 +407,11 @@ class ThirdPartyDevice(Device, Generic[_DeviceInterfaceT]):
         )
 
     @property
-    def device(self) -> Type[_DeviceInterfaceT]:
+    def device(self) -> _DeviceInterfaceT:
         return self._device
 
     @device.setter
-    def device(self, device: Type[_DeviceInterfaceT]):
+    def device(self, device: _DeviceInterfaceT):
         self._device = device
 
 

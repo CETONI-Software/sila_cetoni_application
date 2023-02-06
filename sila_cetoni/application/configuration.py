@@ -52,14 +52,14 @@ class DeviceConfiguration(Configuration, Generic[_T]):
         The device type of the devices in this configuration
     """
 
-    _devices: List[Type[_T]]
+    _devices: List[_T]
 
     def __init__(self, name: str, config_file_path: Path) -> None:
         self._devices = []
         super().__init__(name, config_file_path)
 
     @property
-    def devices(self) -> List[Type[_T]]:
+    def devices(self) -> List[_T]:
         return self._devices
 
     def __str__(self) -> str:
