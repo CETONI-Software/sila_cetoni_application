@@ -10,15 +10,18 @@ import jsonschema
 import jsonschema.exceptions
 from isodate import parse_duration
 
+from sila_cetoni.device_driver_abc import DeviceDriverABC
+from sila_cetoni.pkgutil import available_packages
+
 from ..application import resource_dir
+from .configuration import DeviceConfiguration
+from .device import ThirdPartyDevice
+from .local_ip import LOCAL_IP
 
 SCHEMA: Dict
 with open(Path((resource_dir)).joinpath("configuration_schema.json"), "rt") as schema_file:
     SCHEMA = json.load(schema_file)
 
-from .configuration import DeviceConfiguration
-from .device import ThirdPartyDevice
-from .local_ip import LOCAL_IP
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +41,7 @@ class JSONWithCommentsDecoder(json.JSONDecoder):
         return super().decode(s)
 
 
-class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
+class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriverABC]]):
     """
     The device configuration for sila_cetoni based applications
 
@@ -117,12 +120,8 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice]):
     def __parse_devices(self, devices: Optional[Dict[str, Dict]]):
         logger.debug(f"JSON devices {devices}")
         self._devices = []
-        if devices is not None:
-            for device in devices:
-                try:
-                    self._devices.append(ThirdPartyDevice(device, devices[device]))
-                except KeyError as err:
-                    raise RuntimeError(f"Failed to parse device {device!r}: Expected property {err} could not be found")
+        for package in available_packages().values():
+            self._devices.extend(package.parse_devices(devices))
 
     def __str__(self) -> str:
         return (
