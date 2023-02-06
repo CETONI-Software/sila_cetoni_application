@@ -31,21 +31,15 @@ import os
 import threading
 import time
 from abc import abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from functools import wraps
 from threading import Thread
 from typing import TYPE_CHECKING, List, Optional, Union
 
-# import qmixsdk
-try:
-    from qmixsdk import qmixbus
-
-    from .device import CetoniPumpDevice
-except (ModuleNotFoundError, ImportError):
-    pass
-
 from sila2.framework import UndefinedExecutionError
+
+from sila_cetoni.pkgutil import available_packages
 
 from .application_configuration import ApplicationConfiguration
 from .configuration import DeviceConfiguration
@@ -56,16 +50,9 @@ from .singleton import ABCSingleton
 if TYPE_CHECKING:
     from sila2.framework import Command, Feature, Property
 
-    from ....device_driver_abc import DeviceDriverABC
+    from sila_cetoni.mobdos import CetoniMobDosDevice
+
     from .cetoni_device_configuration import CetoniDeviceConfiguration
-    from .device import (
-        BalanceDevice,
-        CetoniMobDosDevice,
-        HeatingCoolingDevice,
-        PurificationDevice,
-        StirringDevice,
-        ThirdPartyDevice,
-    )
 
 logger = logging.getLogger(__name__)
 
@@ -223,7 +210,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
         def __getattribute__(self, name):
             attr = object.__getattribute__(self, name)
-            
+
             if cls.__application_config is None:
                 # there is not `CetoniApplicationSystem` instance so we don't need/want to monitor for traffic
                 return attr
@@ -266,6 +253,10 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         off it is interpreted to mean that the controller is up and running again and
         the SiLA servers are attempted to start.
         """
+
+        from qmixsdk import qmixbus
+
+        from sila_cetoni.pumps import CetoniPumpDevice
 
         DC_LINK_UNDER_VOLTAGE = 0x3220
 
@@ -328,7 +319,6 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                     logger.debug(f"Setting device {device} operational")
                     device.set_operational()
                     if isinstance(device, CetoniPumpDevice):
-                        device: CetoniPumpDevice  # typing
                         drive_pos_counter = ServerConfiguration(
                             device.name.replace("_", " "), self._config.name
                         ).pump_drive_position_counter
@@ -359,14 +349,11 @@ class ApplicationSystem(ApplicationSystemBase):
         else:
             self.__cetoni_application_system = None
 
-        logger.debug(f"Parsed devices {self._config.devices}")
-
-        self.__create_balances(self._config.scan_devices)
-        self.__create_lcms(self._config.scan_devices)
-        self.__create_heating_cooling_devices(self._config.scan_devices)
-        self.__create_purification_devices(self._config.scan_devices)
-        self.__create_stirring_devices(self._config.scan_devices)
-        self.__create_io_devices(self._config.scan_devices)
+        for name, package in available_packages().items():
+            try:
+                package.create_devices(self._config, self._config.scan_devices)
+            except Exception as err:
+                logger.warning(f"'{name}.create_devices' failed with error {err!r}", exc_info=err)
 
         logger.debug(f"Created devices {self._config.devices}")
 
@@ -380,7 +367,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 if device.device is not None:
                     device.device.start()
             except Exception as err:
-                device.device = self.___set_device_driver_simulated_or_raise(device, err)
+                device.set_device_simulated_or_raise(err)
                 device.device.start()
         logger.info("Application system started")
 
@@ -476,347 +463,6 @@ class ApplicationSystem(ApplicationSystemBase):
             return wrapper
 
         return decorator
-
-    def ___set_device_driver_simulated_or_raise(self, device: ThirdPartyDevice, err: Exception) -> DeviceDriverABC:
-        """
-        Swaps the device driver of the given `device` to a simulated driver or raises `err` if this is not possible
-        """
-        if self._config.simulate_missing and not device.simulated:
-            device.simulated = True
-            if device.device_type == "balance":
-                from sila_cetoni.balance.device_drivers import sartorius_balance
-
-                if isinstance(err, sartorius_balance.SartoriusBalanceNotFoundException):
-                    logger.warning(
-                        f"Could not connect to balance on {device.port}, setting device simulated", exc_info=err
-                    )
-                    return sartorius_balance.SartoriusBalanceSim(device.port)
-            elif device.device_type == "lcms":
-                from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
-
-                if isinstance(err, shimadzu_lcms2020.LabSolutionsStartException):
-                    logger.warning(
-                        f"Could not connect to Shimadzu LC/MS, setting device simulated",
-                        exc_info=err,
-                    )
-                    return shimadzu_lcms2020.ShimadzuLCMS2020Sim()
-            elif device.device_type == "heating_cooling":
-                if device.manufacturer == "Huber":
-                    from sila_cetoni.heating_cooling.device_drivers import huber_chiller
-
-                    if isinstance(err, huber_chiller.HuberChillerNotFoundException):
-                        logger.warning(
-                            f"Could not connect to Huber Chiller on {device.port}, setting device simulated",
-                            exc_info=err,
-                        )
-                        return huber_chiller.HuberChillerSim(device.port)
-                elif device.manufacturer == "Memmert":
-                    from sila_cetoni.heating_cooling.device_drivers import memmert_oven
-
-                    if isinstance(err, memmert_oven.MemmertOvenNotFoundException):
-                        logger.warning(
-                            f"Could not connect to Memmert Oven on {device.server_url}, setting device simulated",
-                            exc_info=err,
-                        )
-                        return memmert_oven.MemmertOvenSim(device.server_url)
-            elif device.device_type == "purification":
-                from sila_cetoni.purification.device_drivers import sartorius_arium
-
-                if isinstance(err, sartorius_arium.SartoriusAriumNotFoundException):
-                    logger.warning(
-                        f"Could not connect to purification device on {device.server_url}, setting device simulated",
-                        exc_info=err,
-                    )
-                    return sartorius_arium.SartoriusAriumSim(device.server_url, device.trigger_port)
-            elif device.device_type == "stirring":
-                from sila_cetoni.stirring.device_drivers import twomag_mixdrive
-
-                if isinstance(err, twomag_mixdrive.MIXdriveNotFoundException):
-                    logger.warning(
-                        f"Could not connect to stirring device on {device.port}, setting device simulated", exc_info=err
-                    )
-                    return twomag_mixdrive.MIXdriveSim(device.port)
-        raise err
-
-    # -------------------------------------------------------------------------
-    # Balance
-    def __create_balances(self, scan: bool = False):
-        """
-        Looks up all balances from the current configuration and tries to auto-detect more devices if `scan` is `True`
-        """
-
-        balances = list(filter(lambda d: d.device_type == "balance", self._config.devices))
-
-        try:
-            from sila_cetoni.balance.device_drivers import sartorius_balance
-
-            from .device import BalanceDevice
-        except (ModuleNotFoundError, ImportError) as err:
-            msg = "Could not import sila_cetoni.balance package - no support for balance devices!"
-            if len(balances) > 0:
-                raise RuntimeError(msg)
-            else:
-                logger.warning(msg, exc_info=err)
-            return
-
-        balances: List[BalanceDevice]  # typing
-
-        for balance in balances:
-            if balance.manufacturer == "Sartorius":
-                logger.debug(f"Connecting to balance on port {balance.port!r}")
-                SartoriusBalance = (
-                    sartorius_balance.SartoriusBalanceSim if balance.simulated else sartorius_balance.SartoriusBalance
-                )
-                try:
-                    balance.device = SartoriusBalance(balance.port)
-                except sartorius_balance.BalanceNotFoundException as err:
-                    balance.device = self.___set_device_driver_simulated_or_raise(balance, err)
-
-        if scan:
-            logger.debug("Looking for balances")
-
-            bal = sartorius_balance.SartoriusBalance()
-            try:
-                bal.open()
-                logger.debug(f"Found balance on port {bal.port!r}")
-                balance = BalanceDevice(
-                    "Sartorius_Balance", {"type": "balance", "manufacturer": "Sartorius", "port": bal.port}
-                )
-                balance.device = bal
-                self._config.devices += [balance]
-            except sartorius_balance.BalanceNotFoundException:
-                pass
-
-    # -------------------------------------------------------------------------
-    # LC/MS
-    def __create_lcms(self, scan: bool = False):
-        """
-        Looks up all possible LC/MS device from the current configuration and tries to auto-detect more devices if
-        `scan` is `True`
-
-        :note: We currently only support a single LC/MS device
-        """
-
-        devices = list(filter(lambda d: d.device_type == "lcms", self._config.devices))
-
-        try:
-            from sila_cetoni.lcms.device_drivers import shimadzu_lcms2020
-
-            from .device import LCMSDevice
-        except (ModuleNotFoundError, ImportError) as err:
-            msg = "Could not import sila_cetoni.lcms package - no support for LC/MS devices!"
-            if len(devices) > 0:
-                raise RuntimeError(msg)
-            else:
-                logger.warning(msg, exc_info=err)
-            return
-
-        devices: List[LCMSDevice]  # typing
-
-        for lcms in devices:
-            if lcms.manufacturer == "Shimadzu":
-                logger.debug(f"Connecting to LC/MS {lcms.name!r}")
-                ShimadzuLCMS2020 = (
-                    shimadzu_lcms2020.ShimadzuLCMS2020Sim if lcms.simulated else shimadzu_lcms2020.ShimadzuLCMS2020
-                )
-                try:
-                    lcms.device = ShimadzuLCMS2020()
-                except shimadzu_lcms2020.LabSolutionsStartException as err:
-                    lcms.device = self.___set_device_driver_simulated_or_raise(lcms, err)
-
-        if scan:
-            logger.debug("Looking for LC/MS")
-
-            lcms = shimadzu_lcms2020.ShimadzuLCMS2020()
-            try:
-                lcms.open()
-                logger.debug(f"Found LC/MS named {lcms.instrument_name!r}")
-                lcms_dev = LCMSDevice(lcms.instrument_name, {"type": "lcms", "manufacturer": "Shimadzu"})
-                lcms_dev.device = lcms
-                self._config.devices += [lcms_dev]
-            except shimadzu_lcms2020.LabSolutionsStartException:
-                pass
-
-    # -------------------------------------------------------------------------
-    # Heating/Cooling
-    def __create_heating_cooling_devices(self, scan: bool = False):
-        """
-        Looks up all heating/cooling devices from the current configuration and tries to auto-detect more devices if
-        `scan` is `True`
-        """
-
-        devices = list(filter(lambda d: d.device_type == "heating_cooling", self._config.devices))
-
-        try:
-            from sila_cetoni.heating_cooling.device_drivers import huber_chiller, memmert_oven
-
-            from .device import HeatingCoolingDevice, HuberChillerDevice, MemmertOvenDevice
-        except (ModuleNotFoundError, ImportError) as err:
-            msg = "Could not import sila_cetoni.heating_cooling package - no support for heating/cooling devices!"
-            if len(devices) > 0:
-                raise RuntimeError(msg)
-            else:
-                logger.warning(msg, exc_info=err)
-            return
-
-        devices: List[HeatingCoolingDevice]  # typing
-
-        for device in devices:
-            if device.manufacturer == "Huber":
-                device: HuberChillerDevice  # typing
-                logger.debug(f"Connecting to Huber Chiller on port {device.port!r}")
-                HuberChiller = huber_chiller.HuberChillerSim if device.simulated else huber_chiller.HuberChiller
-                try:
-                    device.device = HuberChiller(device.port)
-                except huber_chiller.HuberChillerNotFoundException as err:
-                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
-            elif device.manufacturer == "Memmert":
-                device: MemmertOvenDevice  # typing
-                logger.debug(f"Connecting to Memmert Oven at {device.server_url!r}")
-                MemmertOven = memmert_oven.MemmertOvenSim if device.simulated else memmert_oven.MemmertOven
-                try:
-                    device.device = MemmertOven(device.server_url)
-                except memmert_oven.MemmertOvenNotFoundException as err:
-                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
-
-        if scan:
-            logger.debug("Looking for heating/cooling devices")
-            logger.info("Automatic searching for heating/cooling devices will only find Huber Chillers!")
-
-            dev = huber_chiller.HuberChiller()
-            try:
-                dev.open()
-                logger.debug(f"Found heating/cooling device named {dev.name!r}")
-                device = HeatingCoolingDevice(
-                    dev.name, {"type": "heating_cooling", "manufacturer": "Huber", "port": dev.port}
-                )
-                device.device = dev
-                self._config.devices += [device]
-            except huber_chiller.HuberChillerNotFoundException:
-                pass
-
-    # -------------------------------------------------------------------------
-    # Purification
-    def __create_purification_devices(self, scan: bool = False):
-        """
-        Looks up all purification devices from the current configuration and tries to auto-detect more devices if `scan`
-        is `True`
-        """
-
-        devices: List[PurificationDevice] = list(
-            filter(lambda d: d.device_type == "purification", self._config.devices)
-        )
-
-        try:
-            from sila_cetoni.purification.device_drivers import sartorius_arium
-        except (ModuleNotFoundError, ImportError) as err:
-            msg = "Could not import sila_cetoni.purification package - no support for purification devices!"
-            if devices:
-                raise RuntimeError(msg)
-            else:
-                logger.warning(msg, exc_info=err)
-            return
-
-        devices: List[PurificationDevice]  # typing
-
-        for device in devices:
-            if device.manufacturer == "Sartorius":
-                logger.debug(f"Connecting to purification device via {device.server_url!r}")
-                SartoriusArium = (
-                    sartorius_arium.SartoriusAriumSim if device.simulated else sartorius_arium.SartoriusArium
-                )
-                try:
-                    device.device = SartoriusArium(device.server_url, device.trigger_port)
-                except sartorius_arium.SartoriusAriumNotFoundException as err:
-                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
-
-        if scan:
-            logger.warning("Automatic searching for purification devices is not supported at the moment!")
-
-    # -------------------------------------------------------------------------
-    # Stirring
-    def __create_stirring_devices(self, scan: bool = False):
-        """
-        Looks up all stirring devices from the current configuration and tries to auto-detect more devices if `scan` is
-        `True`
-        """
-
-        devices = list(filter(lambda d: d.device_type == "stirring", self._config.devices))
-
-        try:
-            from sila_cetoni.stirring.device_drivers import twomag_mixdrive
-
-            from .device import StirringDevice
-        except (ModuleNotFoundError, ImportError) as err:
-            msg = "Could not import sila_cetoni.stirring package - no support for stirring devices!"
-            if len(devices) > 0:
-                raise RuntimeError(msg)
-            else:
-                logger.warning(msg, exc_info=err)
-            return
-
-        devices: List[StirringDevice]  # typing
-
-        for device in devices:
-            if device.manufacturer == "2mag":
-                logger.debug(f"Connecting to stirring device on port {device.port!r}")
-                MIXdrive = twomag_mixdrive.MIXdriveSim if device.simulated else twomag_mixdrive.MIXdrive
-                try:
-                    device.device = MIXdrive(device.port)
-                except twomag_mixdrive.MIXdriveNotFoundException as err:
-                    device.device = self.___set_device_driver_simulated_or_raise(device, err)
-
-        if scan:
-            logger.debug("Looking for stirring devices")
-
-            dev = twomag_mixdrive.MIXdrive()
-            try:
-                dev.open()
-                logger.debug(f"Found stirring device on port {dev.port!r}")
-                device = StirringDevice(dev.name, {"type": "stirring", "manufacturer": "2mag", "port": dev.port})
-                device.device = dev
-                self._config.devices += [device]
-            except twomag_mixdrive.MIXdriveNotFoundException:
-                pass
-
-    # -------------------------------------------------------------------------
-    # I/O
-    def __create_io_devices(self, scan: bool = False):
-        """
-        Looks up all I/O devices from the current configuration and tries to auto-detect more devices if `scan` is `True`
-        """
-
-        devices: List[IODevice] = list(filter(lambda d: d.device_type == "io", self._config.devices))
-
-        try:
-            from sila_cetoni.io.device_drivers import revpi
-
-            from .device import IODevice
-        except (ModuleNotFoundError, ImportError) as err:
-            msg = "Could not import sila_cetoni.io.device_drivers.revpi package - no support for Revolution PI I/O!"
-            if len(devices) > 0:
-                raise RuntimeError(msg)
-            else:
-                logger.warning(msg, exc_info=err)
-            return
-
-        for device in devices:
-            if device.manufacturer == "Kunbus":
-                channels: List[revpi.IOChannelInterface] = []
-
-                for (description, ChannelType) in (
-                    ("analog in", revpi.RevPiAnalogInChannel),
-                    ("analog out", revpi.RevPiAnalogOutChannel),
-                    ("digital in", revpi.RevPiDigitalInChannel),
-                    ("digital out", revpi.RevPiDigitalOutChannel),
-                ):
-                    channel_count = ChannelType.number_of_channels()
-                    logger.debug(f"Number of {description} channels: {channel_count}")
-                    for i in range(channel_count):
-                        channels += [ChannelType.channel_at_index(i)]
-                        logger.debug(f"Found {description} channel {i} named {channels[-1].name}")
-
-                device.io_channels = channels
 
 
 class SystemNotOperationalError(UndefinedExecutionError):
