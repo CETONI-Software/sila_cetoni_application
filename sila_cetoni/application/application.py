@@ -28,27 +28,14 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
-from queue import Empty, Queue
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List
+from queue import Empty, Queue
+from typing import Callable, Dict, List
 
 import typer
 from sila2.server import SilaServer
 
-if TYPE_CHECKING:
-    from sila_cetoni.application.device import (
-        CetoniAxisSystemDevice,
-        CetoniPumpDevice,
-        CetoniMobDosDevice,
-        ControllerDevice,
-        IODevice,
-        ValveDevice,
-        BalanceDevice,
-        HeatingCoolingDevice,
-        LCMSDevice,
-        PurificationDevice,
-        StirringDevice,
-    )
+from sila_cetoni.pkgutil import available_packages
 
 from .application_configuration import ApplicationConfiguration
 from .server_configuration import ServerConfiguration
@@ -243,6 +230,8 @@ class Application(Singleton):
         """
         logger.debug("Creating SiLA 2 servers...")
 
+        available_pkgs = available_packages()
+
         for device in self.__system.all_devices:
 
             logger.info(f"Creating server for {device}")
@@ -251,108 +240,19 @@ class Application(Singleton):
             server_name = device.name.replace("_", " ")
             common_args = {
                 "server_name": server_name,
-                "server_type": "TestServer",
                 "server_uuid": ServerConfiguration(server_name, self.__system.device_config.name).server_uuid,
             }
 
-            server: SilaServer
-            if device.device_type == "pump":
-                pump: CetoniPumpDevice = device
-                from sila_cetoni.pumps.syringepumps.sila.syringepump_service import Server
-
-                server = Server(
-                    pump=pump.device_handle,
-                    valve=pump.valves[0] if len(pump.valves) > 0 else None,
-                    io_channels=pump.io_channels,
-                    **common_args,
-                )
-            elif device.device_type == "contiflow_pump":
-                pump: CetoniPumpDevice = device
-                from sila_cetoni.pumps.contiflowpumps.sila.contiflowpump_service.server import Server
-
-                server = Server(pump=pump.device_handle, **common_args)
-            elif device.device_type == "peristaltic_pump":
-                pump: CetoniPumpDevice = device
-                # from sila_cetoni.pumps.peristalticpumps.sila.peristalticpump_service.server import Server
-
-                # server = Server(pump=pump.device_handle, **common_args)
-                logger.info(f"No support for peristaltic pumps yet! Skipping creation of SiLA Server for {pump.name}.")
-                continue
-            elif device.device_type == "mobdos":
-                mobdos: CetoniMobDosDevice = device
-                from sila_cetoni.mobdos.sila.mobdos_service.server import Server
-
-                server = Server(
-                    pump=mobdos.device_handle,
-                    valve=mobdos.valves[0] if len(mobdos.valves) > 0 else None,
-                    io_channels=mobdos.io_channels,
-                    battery=mobdos.battery,
-                    magnet=mobdos.magnet,
-                    **common_args,
-                )
-            elif device.device_type == "axis_system":
-                axis_system: CetoniAxisSystemDevice = device
-
-                from sila_cetoni.motioncontrol.axis.sila.axis_service.server import Server
-
-                server = Server(
-                    axis_system=axis_system.device_handle,
-                    io_channels=axis_system.io_channels,
-                    device_properties=axis_system.device_properties,
-                    **common_args,
-                )
-            elif device.device_type == "valve":
-                valve_device: ValveDevice = device
-
-                from sila_cetoni.valves.sila.valve_service.server import Server
-
-                server = Server(valves=valve_device.valves, **common_args)
-            elif device.device_type == "controller":
-                controller_device: ControllerDevice = device
-
-                from sila_cetoni.controllers.sila.controllers_service.server import Server
-
-                server = Server(controller_channels=controller_device.controller_channels, **common_args)
-            elif device.device_type == "io":
-                io_device: IODevice = device
-
-                from sila_cetoni.io.sila.io_service.server import Server
-
-                server = Server(io_channels=io_device.io_channels, **common_args)
-            elif device.device_type == "balance":
-                balance: BalanceDevice = device
-
-                from sila_cetoni.balance.sila.balance_service.server import Server
-
-                server = Server(balance=balance.device, **common_args)
-            elif device.device_type == "lcms":
-                lcms: LCMSDevice = device
-
-                from sila_cetoni.lcms.sila.spectrometry_service.server import Server
-
-                server = Server(lcms=lcms.device, **common_args)
-            elif device.device_type == "heating_cooling":
-                heating_cooling_device: HeatingCoolingDevice = device
-
-                from sila_cetoni.heating_cooling.sila.heating_cooling_service.server import Server
-
-                server = Server(temp_controller=heating_cooling_device.device, **common_args)
-            elif device.device_type == "purification":
-                purification_device: PurificationDevice = device
-
-                from sila_cetoni.purification.sila.purification_service.server import Server
-
-                server = Server(device=purification_device.device, **common_args)
-            elif device.device_type == "stirring":
-                stirring_device: StirringDevice = device
-
-                from sila_cetoni.stirring.sila.stirring_service.server import Server
-
-                server = Server(device=stirring_device.device, **common_args)
+            if f"sila_cetoni.{device.device_type}" in available_pkgs:
+                server = available_pkgs[f"sila_cetoni.{device.device_type}"].create_server(device, **common_args)
+                if server is not None:
+                    self.__servers.append(server)
+                else:
+                    logger.warning(
+                        f"'sila_cetoni.{device.device_type}.create_server' returned 'None' for device {device}"
+                    )
             else:
-                logger.warning(f"Unhandled device type {device.device_type} of device {device}")
+                logger.warning(f"Unhandled device type {device.device_type!r} of device {device}")
                 continue
-
-            self.__servers += [server]
 
         logger.debug(f"Done creating servers: {[(server.server_name, server) for server in self.__servers]}")
