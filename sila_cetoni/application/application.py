@@ -155,6 +155,8 @@ class Application(Singleton):
 
         try:
             self.__start_servers()
+            if self.__system.state.shutting_down():
+                return False
             print("Press Ctrl-C to stop...", flush=True)
             while not self.__system.state.shutting_down():
                 try:
@@ -167,7 +169,6 @@ class Application(Singleton):
             print()
             self.stop()
             return True
-        return False
 
     def stop(self):
         """
