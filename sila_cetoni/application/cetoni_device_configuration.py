@@ -5,28 +5,16 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import List, Union
+from typing import Dict
 
 from lxml import etree, objectify
-from qmixsdk import qmixbus, qmixcontroller, qmixmotion, qmixpump, qmixvalve
+from qmixsdk import qmixbus
+
 from sila_cetoni.config import CETONI_SDK_PATH
-from sila_cetoni.io.device_drivers import cetoni
+from sila_cetoni.pkgutil import SiLACetoniFirstPartyPackage, available_packages
 
 from .configuration import DeviceConfiguration
-from .device import (
-    AxisSystemDevice,
-    CetoniAxisSystemDevice,
-    CetoniControllerDevice,
-    CetoniDevice,
-    CetoniIODevice,
-    CetoniMobDosDevice,
-    CetoniPumpDevice,
-    CetoniValveDevice,
-    ControllerDevice,
-    IODevice,
-    PumpDevice,
-    ValveDevice,
-)
+from .device import CetoniDevice
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +56,18 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         # might have a valve but they're not a valve device). That's why valves have to be detected after pumps and I/O
         # devices have to be detected last (since then we can guarantee that there is no possibility for an I/O channel
         # to not belong to an I/O device).
-        self.__create_pump_devices()
-        self.__create_axis_systems_devices()
-        self.__create_valve_devices()
-        self.__create_controller_devices()
-        self.__create_io_devices()
+        self._devices = []
+        available_pkgs: Dict[str, SiLACetoniFirstPartyPackage] = available_packages()
+        try:
+            self._devices.extend(available_pkgs["sila_cetoni.pumps"].create_devices(self))
+            self._devices.extend(available_pkgs["sila_cetoni.motioncontrol"].create_devices(self))
+            self._devices.extend(available_pkgs["sila_cetoni.valves"].create_devices(self))
+            self._devices.extend(available_pkgs["sila_cetoni.controllers"].create_devices(self))
+            self._devices.extend(available_pkgs["sila_cetoni.io"].create_devices(self))
+        except KeyError as err:
+            logger.error(f"Failed to create devices because the {err.args[0]!r} package is not installed")
+        except Exception as err:
+            logger.error(f"Unexpected exception during device creation: {err}", exc_info=err)
 
         for plugin in root.Core.PluginList.iterchildren():
             if plugin.text in (
@@ -90,7 +85,6 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
             self._parse_plugin(plugin.text)
 
         logger.debug(f"Found the following devices: {self._devices}")
-
 
     def _parse_plugin(self, plugin_name: str):
         """
@@ -196,206 +190,28 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         """
         self.__bus.close()
 
-    # -------------------------------------------------------------------------
-    # Pumps
-    def __create_pump_devices(self):
-        """
-        Looks up all pumps from the current configuration and adds them as `CetoniPumpDevice` to the device list
-        """
-        pump_count = qmixpump.Pump.get_no_of_pumps()
-        logger.debug("Number of pumps: %s", pump_count)
-
-        for i in range(pump_count):
-            pump = qmixpump.Pump()
-            pump.lookup_by_device_index(i)
-            pump_name = pump.get_device_name()
-            logger.debug("Found pump %d named %s", i, pump_name)
-            try:
-                pump.get_device_property(qmixpump.ContiFlowProperty.SWITCHING_MODE)
-                pump = qmixpump.ContiFlowPump(pump.handle)
-                logger.debug("Pump %s is contiflow pump", pump_name)
-            except qmixbus.DeviceError:
-                pass
-            self._devices += [
-                CetoniMobDosDevice(pump_name, pump) if self._has_battery else CetoniPumpDevice(pump_name, pump)
-            ]
-
     def enable_pumps(self):
         """
         Enables all pumps
         """
-        pump: CetoniPumpDevice
+        from sila_cetoni.pumps import CetoniPumpDevice
+
+        pump: CetoniPumpDevice  # typing
         for pump in filter(lambda d: isinstance(d, CetoniPumpDevice), self._devices):
             if pump.device_handle.is_in_fault_state():
                 pump.device_handle.clear_fault()
             if not pump.device_handle.is_enabled():
                 pump.device_handle.enable(True)
 
-    # -------------------------------------------------------------------------
-    # Motion Control
-    def __create_axis_systems_devices(self):
-        """
-        Looks up all axis systems from the current configuration and adds them as `CetoniAxisSystemDevice` to the device
-        list
-        """
-
-        system_count = qmixmotion.AxisSystem.get_axis_system_count()
-        logger.debug("Number of axis systems: %s", system_count)
-
-        for i in range(system_count):
-            axis_system = qmixmotion.AxisSystem()
-            axis_system.lookup_by_device_index(i)
-            axis_system_name = axis_system.get_device_name()
-            logger.debug("Found axis system %d named %s", i, axis_system.get_device_name())
-            self._devices += [CetoniAxisSystemDevice(axis_system_name, axis_system)]
-
     def enable_axis_systems(self):
         """
         Enables all axis systems
         """
-        axis_system: CetoniAxisSystemDevice
+        from sila_cetoni.motioncontrol import CetoniAxisSystemDevice
+
+        axis_system: CetoniAxisSystemDevice  # typing
         for axis_system in filter(lambda d: isinstance(d, CetoniAxisSystemDevice), self._devices):
             axis_system.device_handle.enable(True)
-
-    # -------------------------------------------------------------------------
-    # Valves
-    def __create_valve_devices(self):
-        """
-        Looks up all valves from the current configuration and adds them as `CetoniValveDevice` to the device list
-        """
-
-        valve_count = qmixvalve.Valve.get_no_of_valves()
-        logger.debug("Number of valves: %s", valve_count)
-
-        for i in range(valve_count):
-            valve = qmixvalve.Valve()
-            valve.lookup_by_device_index(i)
-            try:
-                valve_name = valve.get_device_name()
-            except OSError:
-                # When there are contiflow pumps in the config the corresponding  valves from the original syringe pumps
-                # are duplicated internally.  I.e. with one contiflow pump made up of two low pressure pumps  with their
-                # corresponding valves the total number of valves is  4 despite of the actual 2 physical valves
-                # available. This leads  to an access violation error inside QmixSDK in case the device  name of one of
-                # the non-existent contiflow valves is requested.  We can fortunately mitigate this with this try-except
-                # here.
-                continue
-            logger.debug("Found valve %d named %s", i, valve_name)
-
-            for device in self._devices:
-                if device.name.rsplit("_Pump", 1)[0] in valve_name:
-                    logger.debug(f"Valve {valve_name} belongs to device {device}")
-                    if "QmixIO" in device.name:
-                        # These valve devices are actually just convenience devices that operate on digital I/O
-                        # channels. Hence, they can be just used via their corresponding I/O channel.
-                        continue
-                    device.valves += [valve]
-                    break
-            else:
-                try:
-                    device_name = re.match(r".*(?=_Valve\d?$)", valve_name).group()
-                    if "QmixIO" in device_name:
-                        # These valve devices are actually just convenience devices that operate on digital I/O
-                        # channels. Hence, they can be just used via their corresponding I/O channel.
-                        continue
-                except AttributeError:
-                    device_name = valve_name
-                logger.debug(f"Standalone valve device {device_name}")
-                device = CetoniValveDevice(device_name)
-                logger.debug(f"Valve {valve_name} belongs to device {device}")
-                device.valves += [valve]
-                self._devices += [device]
-
-    # -------------------------------------------------------------------------
-    # Controllers
-    def __create_controller_devices(self) -> List[ControllerDevice]:
-        """
-        Looks up all controllers from the current configuration and adds them as `CetoniControllerDevice` to the device
-        list
-        """
-        channel_count = qmixcontroller.ControllerChannel.get_no_of_channels()
-        logger.debug("Number of controller channels: %s", channel_count)
-
-        channels = []
-
-        for i in range(channel_count):
-            channel = qmixcontroller.ControllerChannel()
-            channel.lookup_channel_by_index(i)
-            logger.debug("Found controller channel %d named %s", i, channel.get_name())
-            channels.append(channel)
-
-        self.add_channels_to_device(channels)
-
-    # -------------------------------------------------------------------------
-    # I/O
-    def __create_io_devices(self) -> List[IODevice]:
-        """
-        Looks up all I/Os from the current configuration and adds them as `CetoniIODevice` to the device list
-        """
-
-        channels: List[cetoni.IOChannelInterface] = []
-
-        for (description, ChannelType) in (
-            ("analog in", cetoni.CetoniAnalogInChannel),
-            ("analog out", cetoni.CetoniAnalogOutChannel),
-            ("digital in", cetoni.CetoniDigitalInChannel),
-            ("digital out", cetoni.CetoniDigitalOutChannel),
-        ):
-            channel_count = ChannelType.number_of_channels()
-            logger.debug(f"Number of {description} channels: {channel_count}")
-            for i in range(channel_count):
-                channels += [ChannelType.channel_at_index(i)]
-                logger.debug(f"Found {description} channel {i} named {channels[-1].name}")
-
-        self.add_channels_to_device(channels)
-
-    def add_channels_to_device(
-        self,
-        channels: List[Union[qmixcontroller.ControllerChannel, cetoni.IOChannelInterface]],
-    ):
-        """
-        A device might have controller or I/O channels. This relationship between a device and its channels is
-        constructed here.
-
-        If a device is not of a specific type yet (i.e. it's not a `CetoniPumpDevice`, `CetoniAxisSystemDevice` or
-        `CetoniValveDevice`) it is converted to either a `CetoniControllerDevice` or a `CetoniIODevice` depending on the
-        type of the channel.
-
-        :param channels: A list of channels that should be mapped to their corresponding devices
-        """
-
-        for channel in channels:
-            channel_name = channel.get_name()
-            for device in self._devices:
-                if device.name.rsplit("_Pump", 1)[0] in channel_name:
-                    logger.debug(f"Channel {channel_name} belongs to device {device}")
-                    if isinstance(channel, qmixcontroller.ControllerChannel):
-                        device.controller_channels += [channel]
-                    else:
-                        device.io_channels += [channel]
-                    break
-            else:
-                if isinstance(channel, qmixcontroller.ControllerChannel):
-                    device_name = re.match(
-                        r".*(?=(_Temperature)|(_ReactionLoop)|(_ReactorZone)|(_Ctrl)\d?$)", channel_name
-                    ).group()
-                    logger.debug(f"Standalone controller device {device_name}")
-                    device = CetoniControllerDevice(device_name)
-                    logger.debug(f"Channel {channel_name} belongs to device {device}")
-                    device.controller_channels += [channel]
-                    self._devices += [device]
-                else:
-                    # https://regexr.com/6pv74
-                    device_name = re.match(
-                        r".*(?=((_TC)|(_AI)|(_AnIN)|(_AO)|(_DI)|(_DigIN)|(_DO)|(_DigOUT))\w{1}"
-                        r"((((_IN)|(_DIAG))\w{1,2})|((_PWM)|(_PT100)))?$)",
-                        channel_name,
-                    ).group()
-                    logger.debug(f"Standalone I/O device {device_name}")
-                    device = CetoniIODevice(device_name)
-                    logger.debug(f"Channel {channel_name} belongs to device {device}")
-                    device.io_channels += [channel]
-                    self._devices += [device]
 
     @property
     def has_battery(self) -> bool:
