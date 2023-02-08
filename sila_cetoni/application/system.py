@@ -211,8 +211,9 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         def __getattribute__(self, name):
             attr = object.__getattribute__(self, name)
 
-            if cls.__application_config is None:
-                # there is not `CetoniApplicationSystem` instance so we don't need/want to monitor for traffic
+            if cls.__application_config is None or not cls()._config.has_battery:
+                # there is no `CetoniApplicationSystem` instance or we're not battery powered, so we don't need/want
+                # to monitor for traffic
                 return attr
 
             # the "update_" functions are called by the implementations, not by a client
