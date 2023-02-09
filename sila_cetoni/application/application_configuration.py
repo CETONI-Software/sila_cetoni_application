@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import jsonschema
 import jsonschema.exceptions
@@ -18,12 +19,41 @@ from .configuration import DeviceConfiguration
 from .device import ThirdPartyDevice
 from .local_ip import LOCAL_IP
 
+CONFIG_SCHEMA_FILE_NAME = "configuration_schema.json"
 SCHEMA: Dict
-with open(Path((resource_dir)).joinpath("configuration_schema.json"), "rt") as schema_file:
+with open(Path((resource_dir)).joinpath(CONFIG_SCHEMA_FILE_NAME), "rt") as schema_file:
     SCHEMA = json.load(schema_file)
 
+__all__ = [
+    "SCHEMA",
+    "ApplicationConfiguration"
+]
 
 logger = logging.getLogger(__name__)
+
+
+def load_available_add_on_schemas():
+    """
+    Loads the JSON schemas for the application configuration file for all available add-on packages and appends them to
+    the core JSON `SCHEMA`
+    """
+
+    schema_definitions: Dict = SCHEMA["definitions"]
+    schema_definitions_device: List = SCHEMA["definitions"]["Device"]["allOf"]
+
+    SCHEMA_REF_INSERT_POINT = {"$comment": "@addOnsRefInsertPoint"}
+
+    for name, package in available_packages().items():
+        schema_file_path = os.path.join(os.path.dirname(package.__file__), "resources", CONFIG_SCHEMA_FILE_NAME)
+        if not os.path.exists(schema_file_path):
+            continue
+        with open(schema_file_path, "rt") as schema_file:
+            add_on_schema = json.load(schema_file)
+            logger.info(f"Appending JSON schema for package {name!r}")
+            schema_definitions.update(add_on_schema["definitions"])
+            schema_definitions_device.insert(
+                schema_definitions_device.index(SCHEMA_REF_INSERT_POINT), {"$ref": add_on_schema["$ref"]}
+            )
 
 
 class JSONWithCommentsDecoder(json.JSONDecoder):
@@ -76,6 +106,9 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     )
 
     def __init__(self, name: str, config_file_path: Path) -> None:
+
+        load_available_add_on_schemas()
+
         super().__init__(name, config_file_path)
 
     def _parse(self) -> None:
