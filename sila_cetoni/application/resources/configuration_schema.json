@@ -4,7 +4,7 @@
     "definitions": {
         "DeviceConfiguration": {
             "type": "object",
-            "additionalProperties": false,
+            "unevaluatedProperties": false,
             "properties": {
                 "$schema": {
                     "type": "string",
@@ -102,6 +102,7 @@
                     "title": "Path to a valid CETONI device configuration created with the CETONI Elements software"
                 },
                 "max_time_without_battery": {
+                    "$comment": "MobDos specific property",
                     "type": "string",
                     "format": "duration",
                     "title": "How long the device will stay on at most without a battery (default: 20 seconds)",
@@ -113,6 +114,7 @@
                     ]
                 },
                 "max_time_without_traffic": {
+                    "$comment": "MobDos specific property",
                     "type": "string",
                     "format": "duration",
                     "title": "How long the device will stay on without any SiLA Command calls or Property requests to non-standard features (default: 10 minutes)",
@@ -141,264 +143,32 @@
         "Device": {
             "type": "object",
             "title": "A 3rd-party device that has support in sila_cetoni through an included device driver implementation",
-            "additionalProperties": true,
+            "unevaluatedProperties": false,
             "properties": {
                 "type": {
                     "type": "string",
-                    "title": "The device type",
-                    "enum": [
-                        "balance",
-                        "heating_cooling",
-                        "lcms",
-                        "purification",
-                        "stirring",
-                        "io"
-                    ]
+                    "title": "The device type"
                 },
                 "manufacturer": {
                     "type": "string",
-                    "title": "The device manufacturer",
-                    "enum": [
-                        "Sartorius",
-                        "Huber",
-                        "Memmert",
-                        "Shimadzu",
-                        "2mag",
-                        "Kunbus"
-                    ]
+                    "title": "The device manufacturer"
                 },
                 "simulated": {
                     "type": "boolean",
                     "title": "Whether this device should be simulated (if possible) or not. If it's not possible to simulate this device, there won't be a SiLA server created for it.",
                     "default": false
-                },
-                "port": {
-                    "$comment": "Additional property that is very common, so we want to have intellisense help from editors like VS Code",
-                    "$ref": "#/definitions/Port"
-                },
-                "server_url": {
-                    "$comment": "Additional property that is very common, so we want to have intellisense help from editors like VS Code",
-                    "$ref": "#/definitions/ServerUrl"
                 }
             },
             "required": [
                 "type",
                 "manufacturer"
             ],
-            "not": {
-                "required": [
-                    "port",
-                    "server_url"
-                ]
-            },
             "allOf": [
-                {
-                    "$comment": "All combinations of 'type' and 'manufacturer' that require the 'port' property",
-                    "if": {
-                        "anyOf": [
-                            {
-                                "properties": {
-                                    "type": {
-                                        "const": "balance"
-                                    },
-                                    "manufacturer": {
-                                        "const": "Sartorius"
-                                    }
-                                }
-                            },
-                            {
-                                "properties": {
-                                    "type": {
-                                        "const": "heating_cooling"
-                                    },
-                                    "manufacturer": {
-                                        "const": "Huber"
-                                    }
-                                }
-                            },
-                            {
-                                "properties": {
-                                    "type": {
-                                        "const": "stirring"
-                                    },
-                                    "manufacturer": {
-                                        "const": "2mag"
-                                    }
-                                }
-                            }
-                        ]
-                    },
-                    "then": {
-                        "required": [
-                            "port"
-                        ]
-                    }
-                },
-                {
-                    "$comment": "All combinations of 'type' and 'manufacturer' that require the 'server_url' property",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "heating_cooling"
-                            },
-                            "manufacturer": {
-                                "const": "Memmert"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "server_url": {
-                                "default": "http://192.168.100.100"
-                            }
-                        },
-                        "required": [
-                            "server_url"
-                        ]
-                    }
-                },
-                {
-                    "$comment": "All combinations of 'type' and 'manufacturer' that require the 'server_url' and 'trigger_port' properties",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "purification"
-                            },
-                            "manufacturer": {
-                                "const": "Sartorius"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "server_url": {
-                                "default": "http://192.168.0.100/rest/v1_0/"
-                            }
-                        },
-                        "required": [
-                            "server_url",
-                            "trigger_port"
-                        ]
-                    }
-                },
-                {
-                    "$comment": "All possible 'manufacturer's for the 'type' 'balance'",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "balance"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "manufacturer": {
-                                "enum": [
-                                    "Sartorius"
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "$comment": "All possible 'manufacturer's for the 'type' 'heating_cooling'",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "heating_cooling"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "manufacturer": {
-                                "enum": [
-                                    "Huber",
-                                    "Memmert"
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "$comment": "All possible 'manufacturer's for the 'type' 'lcms'",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "lcms"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "manufacturer": {
-                                "enum": [
-                                    "Shimadzu"
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "$comment": "All possible 'manufacturer's for the 'type' 'purification'",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "purification"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "manufacturer": {
-                                "enum": [
-                                    "Sartorius"
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "$comment": "All possible 'manufacturer's for the 'type' 'stirring'",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "stirring"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "manufacturer": {
-                                "enum": [
-                                    "2mag"
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "$comment": "All possible 'manufacturer's for the 'type' 'io'",
-                    "if": {
-                        "properties": {
-                            "type": {
-                                "const": "io"
-                            }
-                        }
-                    },
-                    "then": {
-                        "properties": {
-                            "manufacturer": {
-                                "enum": [
-                                    "Kunbus"
-                                ]
-                            }
-                        }
-                    }
-                }
+                {"$comment": "@addOnsRefInsertPoint"}
             ]
         },
         "Port": {
+            "$comment": "Common property type used by add-on packages",
             "type": "string",
             "title": "The serial port used to communicate with the device (e.g. COM1 or /dev/ttyUSB1)",
             "examples": [
@@ -407,6 +177,7 @@
             ]
         },
         "ServerUrl": {
+            "$comment": "Common property type used by add-on packages",
             "type": "string",
             "title": "The URL to a server running on the device providing an API to control the device (e.g. a REST API)",
             "format": "uri",
@@ -417,6 +188,16 @@
             "examples": [
                 "http://device.local/rest/v1_0/",
                 "http://192.168.0.100/rest/v1_0/"
+            ]
+        },
+        "IOPort": {
+            "$comment": "Common property type used by add-on packages",
+            "type": "string",
+            "title": "An I/O port (e.g. I_1 or O_3)",
+            "examples": [
+                "I_1",
+                "InputValue1",
+                "O_3"
             ]
         }
     }
