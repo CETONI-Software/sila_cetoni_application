@@ -368,7 +368,7 @@ class ApplicationSystem(ApplicationSystemBase):
                 if device.device is not None:
                     device.device.start()
             except Exception as err:
-                device.set_device_simulated_or_raise(err)
+                device.set_device_simulated_or_raise(self._config, err)
                 device.device.start()
         logger.info("Application system started")
 

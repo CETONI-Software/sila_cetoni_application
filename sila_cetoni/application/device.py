@@ -37,6 +37,8 @@ if TYPE_CHECKING:
 
     from sila_cetoni.io.device_drivers import cetoni
 
+    from .application_configuration import ApplicationConfiguration
+
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +88,17 @@ class Device(ABC):
         self._simulated = simulated
 
     @abstractmethod
-    def set_device_simulated_or_raise(self, err: Exception) -> None:
+    def set_device_simulated_or_raise(self, config: ApplicationConfiguration, err: Exception) -> None:
         """
         Swaps the device driver of this device to a simulated driver or raises `err` if this is not possible
+
+        Parameters
+        ----------
+        config : ApplicationConfiguration
+            The current application configuration that should be used to check if this device should be simulated
+            automatically or not
+        err : Exception
+            The error that occurred while creating the device
         """
         raise NotImplementedError()
 
@@ -186,7 +196,7 @@ try:
             for valve in self._valves:
                 valve.set_communication_state(qmixbus.CommState.operational)
 
-        def set_device_simulated_or_raise(self, err: Exception) -> None:
+        def set_device_simulated_or_raise(self, config: ApplicationConfiguration, err: Exception) -> None:
             # TODO: implement
             raise err
 
