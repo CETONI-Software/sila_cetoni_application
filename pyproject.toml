@@ -1,8 +1,8 @@
 [project]
-name = "sila_cetoni_application"
-version = "1.8.0"
+name = "sila_cetoni.application"
 description = "CETONI main application for all SiLA 2 implementations"
 readme = "README.md"
+dynamic = ["version"]
 authors = [
     { name = "CETONI GmbH", email = "info@cetoni.de" },
 ]
@@ -39,6 +39,9 @@ sila-cetoni = "sila_cetoni.application.__main__:app"
 "Homepage" = "https://cetoni.de/cobomation/#sila"
 "SiLA Standard" = "https://sila-standard.org"
 
+# dynamic version from git
+[tool.setuptools_scm]
+
 [tool.setuptools]
 package-dir = {"" = "."}
 
@@ -47,7 +50,8 @@ package-dir = {"" = "."}
 
 [build-system]
 requires = [
-    "setuptools>=42",
+    "setuptools>=45",
+    "setuptools_scm[toml]>=6.2",
     "wheel",
 ]
 build-backend = "setuptools.build_meta"

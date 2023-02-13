@@ -8,7 +8,10 @@ from typing import Optional
 import click
 import typer
 
+from .application import Application
 from .application_configuration import ApplicationConfiguration
+
+from . import __version__
 
 try:
     import coloredlogs
@@ -16,9 +19,6 @@ except ModuleNotFoundError:
     print("Cannot find coloredlogs! Please install coloredlogs, if you'd like to have nicer logging output:")
     print("`pip install coloredlogs`")
 
-from .application import Application
-
-__version__ = "1.8.0"
 
 app = typer.Typer()
 

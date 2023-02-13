@@ -12,10 +12,13 @@ except ModuleNotFoundError:
     print("`pip install coloredlogs`")
 
 import sila_cetoni.config as config
+from sila_cetoni.utils import get_version
+
+__version__ = get_version(__name__)
 
 resource_dir = os.path.join(os.path.dirname(__file__), "resources")
 
-__all__ = ["resource_dir"]
+__all__ = ["__version__", "resource_dir"]
 
 _NO_EXEC_OPTION = "--no-exec"
 _CETONI_SDK_PATH_KEY = "CETONI_SDK_PATH"
