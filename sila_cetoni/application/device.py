@@ -231,6 +231,7 @@ class ThirdPartyDevice(Device, Generic[_DeviceInterfaceT]):
             manufacturer=json_data["manufacturer"],
             simulated=json_data.get("simulated", SCHEMA["definitions"]["Device"]["properties"]["simulated"]["default"]),
         )
+        self._device = None
 
     def __repr__(self) -> str:
         return (
