@@ -38,6 +38,11 @@
                     "default": 50051,
                     "title": "The port number for the first SiLA Server. This value can be overwritten by the CLI option -p/--server-base-port PORT."
                 },
+                "enable_discovery": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "Enable or disable discovery of all SiLA Servers (whether they announce themselves in the network). This value can be overwritten by the CLI options --enable-discovery/--disable-discovery."
+                },
                 "regenerate_certificates": {
                     "type": "boolean",
                     "default": false,

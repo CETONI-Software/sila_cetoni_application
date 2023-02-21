@@ -8,10 +8,9 @@ from typing import Optional
 import click
 import typer
 
+from . import __version__
 from .application import Application
 from .application_configuration import ApplicationConfiguration
-
-from . import __version__
 
 try:
     import coloredlogs
@@ -50,6 +49,7 @@ def set_logging_level(log_level: str):
 # main program
 @app.command(no_args_is_help=False, context_settings={"help_option_names": ["-h", "--help"]})
 def main(
+    ctx: typer.Context,
     version: Optional[bool] = typer.Option(
         None,
         "--version",
@@ -92,6 +92,11 @@ def main(
         "-p",
         metavar="PORT",
         help="The port number for the first SiLA Server",
+    ),
+    enable_discovery: bool = typer.Option(
+        ApplicationConfiguration.DEFAULT_ENABLE_DISCOVERY,
+        "--enable-discovery/--disable-discovery",
+        help="Enable or disable discovery for all SiLA Servers (whether they announce themselves in the network)",
     ),
     regenerate_certificates: bool = typer.Option(
         ApplicationConfiguration.DEFAULT_REGENERATE_CERTIFICATES,
@@ -158,6 +163,8 @@ def main(
     # overwrite parsed values from config.json with values from CLI options
     application.config.server_ip = server_ip
     application.config.server_base_port = server_base_port
+    if ctx.get_parameter_source(f"enable_discovery") != click.core.ParameterSource.DEFAULT:
+        application.config.enable_discovery = enable_discovery
     application.config.regenerate_certificates = regenerate_certificates
     application.config.scan_devices = scan_devices
     application.config.simulate_missing = simulate_missing
@@ -165,7 +172,7 @@ def main(
         application.config.log_file_dir = log_file_dir
     # set logging level from config.json if not given via CLI option
     if (
-        click.get_current_context().get_parameter_source(f"log_level") == click.core.ParameterSource.DEFAULT
+        ctx.get_parameter_source(f"log_level") == click.core.ParameterSource.DEFAULT
         and log_level != application.config.log_level
     ):
         logging.info(f"Setting log level {application.config.log_level!r} from '{config_file}'")

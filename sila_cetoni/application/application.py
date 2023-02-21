@@ -197,6 +197,7 @@ class Application(Singleton):
                     private_key=server_config.ssl_private_key,
                     cert_chain=server_config.ssl_certificate,
                     ca_for_discovery=server_config.ssl_certificate,
+                    enable_discovery=self.__config.enable_discovery,
                 )
                 server_config.server_port = port
                 server_config.write()

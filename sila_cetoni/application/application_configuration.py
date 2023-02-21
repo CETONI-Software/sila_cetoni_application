@@ -81,6 +81,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     __version: int
     __server_ip: str
     __server_base_port: int
+    __enable_discovery: bool
     __log_level: str
     __log_file_dir: Optional[Path]
     __regenerate_certificates: bool
@@ -92,6 +93,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     __SCHEMA_PROPERTIES = SCHEMA["definitions"]["DeviceConfiguration"]["properties"]
     DEFAULT_SERVER_IP: str = LOCAL_IP
     DEFAULT_SERVER_BASE_PORT: int = int(__SCHEMA_PROPERTIES["server_base_port"]["default"])
+    DEFAULT_ENABLE_DISCOVERY: bool = int(__SCHEMA_PROPERTIES["enable_discovery"]["default"])
     DEFAULT_LOG_LEVEL: str = __SCHEMA_PROPERTIES["log_level"]["default"]
     DEFAULT_REGENERATE_CERTIFICATES: bool = __SCHEMA_PROPERTIES["regenerate_certificates"]["default"]
     DEFAULT_SCAN_DEVICES: bool = __SCHEMA_PROPERTIES["scan_devices"]["default"]
@@ -127,6 +129,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
                 # optional properties -> default values from schema
                 self.__server_ip = config.get("server_ip", self.DEFAULT_SERVER_IP)
                 self.__server_base_port = int(config.get("server_base_port", self.DEFAULT_SERVER_BASE_PORT))
+                self.__enable_discovery = bool(config.get("enable_discovery", self.DEFAULT_ENABLE_DISCOVERY))
                 self.__log_level = config.get("log_level", self.DEFAULT_LOG_LEVEL)
                 self.__log_file_dir = Path(config["log_file_dir"]) if "log_file_dir" in config else None
                 self.__regenerate_certificates = config.get(
@@ -194,6 +197,20 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         if server_base_port is not self.DEFAULT_SERVER_BASE_PORT:
             logger.warning(f"Overwriting server_base_port with {server_base_port!r} (was {self.server_base_port!r})")
             self.__server_base_port = server_base_port
+
+    @property
+    def enable_discovery(self) -> bool:
+        return self.__enable_discovery
+
+    @enable_discovery.setter
+    def enable_discovery(self, enable_discovery: bool) -> None:
+        """
+        Sets the `enable_discovery` property but only if the given `enable_discovery` value is not the default value of
+        this property
+        """
+        if enable_discovery is not self.DEFAULT_ENABLE_DISCOVERY:
+            logger.warning(f"Overwriting enable_discovery with {enable_discovery!r} (was {self.enable_discovery!r})")
+            self.__enable_discovery = enable_discovery
 
     @property
     def log_level(self) -> str:
