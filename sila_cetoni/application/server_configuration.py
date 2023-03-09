@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import logging
 import os
 import platform
 import re
 import uuid
 from configparser import ConfigParser
-from typing import Dict, Optional, Set
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set
+
+if TYPE_CHECKING:
+    from configparser import SectionProxy, _Section
 
 from sila2.server.encryption import generate_self_signed_certificate
 
@@ -99,6 +104,81 @@ class ServerConfiguration(Configuration):
         if version < 2:
             self.__add_default_values_v2()
         self.write()
+
+    # `ConfigParser`-like access ---------------------------------------------
+
+    def __len__(self) -> int:
+        """
+        Returns the number of sections in the config file
+        """
+        return len(self.__parser)
+
+    def __getitem__(self, key: str) -> SectionProxy:
+        """
+        Proxy for accessing the internal `ConfigParser` instance using its `__getitem__` method
+
+        Parameters
+        ----------
+        key : str
+            A section in the config file
+
+        Returns
+        -------
+        section : SectionProxy
+            The corresponding section in the config file
+
+        Raises
+        ------
+        KeyError
+            if there is no section with the given name
+        """
+        return self.__parser[key]
+
+    def __setitem__(self, key: str, value: _Section) -> None:
+        """
+        Sets the given section `key` to the `value`
+
+        Parameters
+        ----------
+        key : str
+            A section in the config file
+        value : _Section
+            The value to set for this section
+        """
+        self.__parser[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        """
+        Removes the given section `key` from the config file
+
+        Parameters
+        ----------
+        key : str
+            A section in the config file
+        """
+        del self.__parser[key]
+
+    def __iter__(self) -> Iterator[str]:
+        """
+        Returns an iterator over all available sections
+        """
+        return iter(self.__parser)
+
+    def __contains__(self, key: object) -> bool:
+        """
+        Returns whether the config file contains a section with the given `key`
+
+        Parameters
+        ----------
+        key : object
+            A section in the config file
+
+        Returns
+        -------
+        bool
+            `True` if the `key` is a section in the config file, else `False`
+        """
+        return key in self.__parser
 
     # v0 ---------------------------------------------------------------------
 
