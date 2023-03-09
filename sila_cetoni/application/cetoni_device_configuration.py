@@ -61,6 +61,7 @@ class CetoniDeviceConfiguration(DeviceConfiguration[CetoniDevice]):
         try:
             self._devices.extend(available_pkgs["sila_cetoni.pumps"].create_devices(self))
             self._devices.extend(available_pkgs["sila_cetoni.motioncontrol"].create_devices(self))
+            self._devices.extend(available_pkgs["sila_cetoni.mobdos"].create_devices(self))
             self._devices.extend(available_pkgs["sila_cetoni.valves"].create_devices(self))
             self._devices.extend(available_pkgs["sila_cetoni.controllers"].create_devices(self))
             self._devices.extend(available_pkgs["sila_cetoni.io"].create_devices(self))
