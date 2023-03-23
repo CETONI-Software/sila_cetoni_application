@@ -157,6 +157,7 @@ def main(
     if log_file_dir is not None:
         log_file_handler = make_log_file_handler(log_file_dir, log_level)
         logging.getLogger().addHandler(log_file_handler)
+        logging.info(f"Writing log to file {log_file_handler.baseFilename!r}")
     logging.info(f"Starting log for {sys.executable} with args {sys.argv}")
 
     application = Application(config_file)
