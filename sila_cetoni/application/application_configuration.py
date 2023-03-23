@@ -55,6 +55,8 @@ def load_available_add_on_schemas():
                 schema_definitions_device.index(SCHEMA_REF_INSERT_POINT), {"$ref": add_on_schema["$ref"]}
             )
 
+    logger.debug(f"Final Schema: {json.dumps(SCHEMA)}")
+
 
 class JSONWithCommentsDecoder(json.JSONDecoder):
     """
