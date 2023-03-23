@@ -171,6 +171,14 @@ def main(
     application.config.simulate_missing = simulate_missing
     if log_file_dir is not None:
         application.config.log_file_dir = log_file_dir
+
+    # set log file dir from config.json if not given via CLI option
+    if log_file_dir is None and application.config.log_file_dir is not None:
+        log_file_dir = application.config.log_file_dir
+        log_file_handler = make_log_file_handler(log_file_dir, log_level)
+        logging.getLogger().addHandler(log_file_handler)
+        logging.info(f"Writing log to file {log_file_handler.baseFilename!r}")
+
     # set logging level from config.json if not given via CLI option
     if (
         ctx.get_parameter_source(f"log_level") == click.core.ParameterSource.DEFAULT
@@ -178,9 +186,8 @@ def main(
     ):
         logging.info(f"Setting log level {application.config.log_level!r} from '{config_file}'")
         set_logging_level(application.config.log_level)
-        if application.config.log_file_dir is not None:
-            if log_file_handler is not None:
-                logging.getLogger().removeHandler(log_file_handler)
+        if log_file_dir is not None:
+            logging.getLogger().removeHandler(log_file_handler)
             log_file_handler = make_log_file_handler(application.config.log_file_dir, application.config.log_level)
             logging.getLogger().addHandler(log_file_handler)
 

@@ -125,6 +125,8 @@ class Application(Singleton):
             `True` means the application ran normally, `False` means the application did not run normally, e.g. because
             the servers could not be started.
         """
+
+        self.__config.parse_devices()
         self.__system = ApplicationSystem(self.__config)
         try:
             self.__system.start()

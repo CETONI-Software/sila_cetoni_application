@@ -86,6 +86,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     __log_file_dir: Optional[Path]
     __regenerate_certificates: bool
     __scan_devices: bool
+    __json_devices: Optional[Dict[str, Dict]]
     __cetoni_device_config_path: Optional[Path]
     __cetoni_max_time_without_battery: timedelta
     __cetoni_max_time_without_traffic: timedelta
@@ -122,7 +123,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
                 logger.debug(f"JSON config {config}")
                 # required properties
                 self.__version = config["version"]
-                self.__parse_devices(config.get("devices", None))
+                self.__json_devices = config.get("devices", None)
                 self.__cetoni_device_config_path = (
                     Path(config["cetoni_devices"]["device_config_path"]) if "cetoni_devices" in config else None
                 )
@@ -153,11 +154,11 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as err:
             raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}")
 
-    def __parse_devices(self, devices: Optional[Dict[str, Dict]]):
-        logger.debug(f"JSON devices {devices}")
+    def parse_devices(self):
+        logger.debug(f"JSON devices {self.__json_devices}")
         self._devices = []
         for package in available_packages().values():
-            self._devices.extend(package.parse_devices(devices))
+            self._devices.extend(package.parse_devices(self.__json_devices))
 
     def __str__(self) -> str:
         return (
