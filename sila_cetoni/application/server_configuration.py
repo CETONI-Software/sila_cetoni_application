@@ -6,7 +6,9 @@ import platform
 import re
 import uuid
 from configparser import ConfigParser
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set
+from typing import TYPE_CHECKING, Dict, Iterator, Tuple, Optional, Set
+
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from configparser import SectionProxy, _Section
@@ -29,6 +31,17 @@ class ServerConfiguration(Configuration):
     __parser: ConfigParser
 
     VERSION = 2
+
+    __instances: Dict[Tuple, Self] = {}
+
+    def __new__(cls, *args, **kwargs):
+        """
+        Ensures that there is only one instance per actual config file
+        """
+        key = args + tuple(kwargs.items())
+        if key not in cls.__instances:
+            cls.__instances[key] = super().__new__(cls)
+        return cls.__instances[key]
 
     def __init__(self, name: str, subdir: str = "") -> None:
         """
@@ -88,7 +101,7 @@ class ServerConfiguration(Configuration):
 
     def _parse(self) -> None:
         self.__parser = ConfigParser()
-        file_exists = self.__parser.read(self._file_path)
+        file_exists = len(self.__parser.read(self._file_path)) != 0
 
         version = self.__parser.getint("meta", "version", fallback=0)
         # update version
