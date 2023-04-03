@@ -406,6 +406,7 @@ class ApplicationSystem(ApplicationSystemBase):
 
         logger.info("Shutting down application system")
         self._state = ApplicationSystemState.SHUTDOWN
+        time.sleep(0.1) # wait so that the SystemState Property gets updated
         if self.__cetoni_application_system is not None:
             self.__cetoni_application_system.shutdown(force)
 
