@@ -268,20 +268,6 @@ class ServerConfiguration(Configuration):
         return self.__parser["server"].get("ssl_certificate").encode("utf-8")
 
     @property
-    def pump_drive_position_counter(self) -> Optional[int]:
-        """
-        Returns the pump drive position counter if this config is for a pump device
-        """
-        return self.__parser["pump"].getint("drive_position_counter")
-
-    @pump_drive_position_counter.setter
-    def pump_drive_position_counter(self, drive_position_counter: int):
-        """
-        Set the pump drive position counter if this config is for a pump device
-        """
-        self.__parser["pump"]["drive_position_counter"] = str(drive_position_counter)
-
-    @property
     def axis_position_counters(self) -> Optional[Dict[str, int]]:
         """
         Returns the axis position counters if this config is for an axis device

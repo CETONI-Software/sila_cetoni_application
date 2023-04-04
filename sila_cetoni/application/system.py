@@ -321,15 +321,12 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                     try:
                         device.set_operational()
                         if isinstance(device, CetoniPumpDevice):
-                            drive_pos_counter = ServerConfiguration(
-                                device.name.replace("_", " "), self._config.name
-                            ).pump_drive_position_counter
-                            if (
-                                drive_pos_counter is not None
-                                and not device.device_handle.is_position_sensing_initialized()
-                            ):
-                                logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
-                                device.device_handle.restore_position_counter_value(drive_pos_counter)
+                            if not device.device_handle.is_position_sensing_initialized():
+                                config = ServerConfiguration(device.name.replace("_", " "), self._config.name)
+                                drive_pos_counter = config["pump"].getint("drive_position_counter")
+                                if drive_pos_counter is not None:
+                                    logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
+                                    device.device_handle.restore_position_counter_value(drive_pos_counter)
                     except qmixbus.DeviceError as err:
                         logger.error(f"Failed to set device {device} operational. Error: {err}", exc_info=err)
 
