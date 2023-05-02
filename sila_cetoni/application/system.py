@@ -318,14 +318,20 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 seconds_stopped = 0
                 for device in self._config.devices:
                     logger.debug(f"Setting device {device} operational")
-                    device.set_operational()
-                    if isinstance(device, CetoniPumpDevice):
-                        drive_pos_counter = ServerConfiguration(
-                            device.name.replace("_", " "), self._config.name
-                        ).pump_drive_position_counter
-                        if drive_pos_counter is not None and not device.device_handle.is_position_sensing_initialized():
-                            logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
-                            device.device_handle.restore_position_counter_value(drive_pos_counter)
+                    try:
+                        device.set_operational()
+                        if isinstance(device, CetoniPumpDevice):
+                            drive_pos_counter = ServerConfiguration(
+                                device.name.replace("_", " "), self._config.name
+                            ).pump_drive_position_counter
+                            if (
+                                drive_pos_counter is not None
+                                and not device.device_handle.is_position_sensing_initialized()
+                            ):
+                                logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
+                                device.device_handle.restore_position_counter_value(drive_pos_counter)
+                    except qmixbus.DeviceError as err:
+                        logger.error(f"Failed to set device {device} operational. Error: {err}", exc_info=err)
 
 
 class ApplicationSystem(ApplicationSystemBase):
@@ -406,7 +412,7 @@ class ApplicationSystem(ApplicationSystemBase):
 
         logger.info("Shutting down application system")
         self._state = ApplicationSystemState.SHUTDOWN
-        time.sleep(0.1) # wait so that the SystemState Property gets updated
+        time.sleep(0.1)  # wait so that the SystemState Property gets updated
         if self.__cetoni_application_system is not None:
             self.__cetoni_application_system.shutdown(force)
 
