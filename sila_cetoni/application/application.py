@@ -26,6 +26,7 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
+import os
 import concurrent.futures
 import logging
 from pathlib import Path
@@ -214,6 +215,18 @@ class Application(Singleton):
             i += 1
         else:
             logger.info("All servers started!")
+            self.__after_start()
+
+    def __after_start(self) -> None:
+        """
+        Creates an empty file on the device to indicate that the SiLA Servers have been started. The presence of this file
+        can be used by systemd services, for example, to turn on an LED.
+        """
+        SILA_CETONI_SERVER_STARTED_FILE_VAR_NAME = "SILA_CETONI_SERVER_STARTED_FILE"
+
+        server_started_file = os.environ.get(SILA_CETONI_SERVER_STARTED_FILE_VAR_NAME)
+        if server_started_file is not None:
+            os.system(f'touch "{server_started_file}"')
 
     def __stop_servers(self):
         """
