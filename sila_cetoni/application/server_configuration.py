@@ -103,20 +103,20 @@ class ServerConfiguration(Configuration):
         self.__parser = ConfigParser()
         file_exists = len(self.__parser.read(self._file_path)) != 0
 
-        version = self.__parser.getint("meta", "version", fallback=0)
+        version = self.__parser.getint("meta", "version", fallback=-1)
         # update version
         self.__parser["meta"] = {}
         self.__parser["meta"]["version"] = str(self.VERSION)
 
-        if not file_exists:
+        if not file_exists or version < 0:
             logger.warning(f"Could not read config file! Creating a new one ({self._file_path})")
             self.__add_default_values()
 
-        if version < 1:
-            self.__add_default_values_v1()
-        if version < 2:
-            self.__add_default_values_v2()
-        self.write()
+            if version < 1:
+                self.__add_default_values_v1()
+            if version < 2:
+                self.__add_default_values_v2()
+            self.write()
 
     # `ConfigParser`-like access ---------------------------------------------
 
