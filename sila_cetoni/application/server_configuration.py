@@ -6,8 +6,9 @@ import platform
 import re
 import uuid
 from configparser import ConfigParser
-from typing import TYPE_CHECKING, Dict, Iterator, Tuple, Optional, Set
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple
 
+import safer
 from typing_extensions import Self
 
 if TYPE_CHECKING:
@@ -221,7 +222,7 @@ class ServerConfiguration(Configuration):
         Writes the current configuration to the file
         """
         os.makedirs(os.path.dirname(self._file_path), exist_ok=True)
-        with open(self._file_path, "w") as config_file:
+        with safer.open(self._file_path, "w", delete_failures=False) as config_file:
             self.__parser.write(config_file)
 
     # v1 ---------------------------------------------------------------------
