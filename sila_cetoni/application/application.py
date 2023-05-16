@@ -136,7 +136,12 @@ class Application(Singleton):
             self.stop()
             raise typer.Exit(1)
 
-        self.__create_servers()
+        try:
+            self.__create_servers()
+        except Exception as err:
+            logger.error(f"Failed to create SiLA servers", exc_info=err)
+            self.stop()
+            raise typer.Exit(2)
 
         if not self.__servers:
             logger.info("No SiLA Servers to run")
