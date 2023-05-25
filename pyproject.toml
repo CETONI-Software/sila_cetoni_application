@@ -42,6 +42,8 @@ sila-cetoni = "sila_cetoni.application.__main__:app"
 
 # dynamic version from git
 [tool.setuptools_scm]
+# include timestamp for dirty workdir versions
+local_scheme = "node-and-timestamp"
 
 [tool.setuptools]
 package-dir = {"" = "."}
