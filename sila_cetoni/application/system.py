@@ -282,10 +282,13 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
             event = self._config.read_bus_event()
             if event.is_valid():
-                logger.debug(
-                    f"event id: {event.event_id}, device handle: {event.device.handle}, "
-                    f"node id: {event.device.get_node_id()}, data: {event.data}, message: {event.string}"
-                )
+                try:
+                    logger.debug(
+                        f"event id: {event.event_id}, device handle: {event.device.handle}, "
+                        f"node id: {event.device.get_node_id()}, data: {event.data}, message: {event.string}"
+                    )
+                except qmixbus.DeviceError as err:
+                    logger.warning(f"received event is faulty: {err!r}", exc_info=err)
 
                 if self._state.is_operational() and is_dc_link_under_voltage_event(event):
                     self._state = ApplicationSystemState.STOPPED
