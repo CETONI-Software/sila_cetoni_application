@@ -22,15 +22,7 @@
                     ]
                 },
                 "server_ip": {
-                    "type": "string",
-                    "anyOf": [
-                        {
-                            "format": "ipv4"
-                        },
-                        {
-                            "format": "ipv6"
-                        }
-                    ],
+                    "$ref": "#/definitions/IPAddress",
                     "title": "The IP address on which the servers should run. This value can be overwritten by the CLI option -i/--server-ip IP."
                 },
                 "server_base_port": {
@@ -170,6 +162,17 @@
             ],
             "allOf": [
                 {"$comment": "@addOnsRefInsertPoint"}
+            ]
+        },
+        "IPAddress": {
+            "type": "string",
+            "anyOf": [
+                {
+                    "format": "ipv4"
+                },
+                {
+                    "format": "ipv6"
+                }
             ]
         },
         "Port": {
