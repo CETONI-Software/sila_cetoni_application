@@ -54,7 +54,12 @@ else:
             logger.info(f"Running on RaspberryPi - setting SDK path to '{config.CETONI_SDK_PATH}'")
         except (ModuleNotFoundError, ImportError):
             if "Ubuntu" in os.uname().version:
-                config.CETONI_SDK_PATH = os.path.join("/usr", "share", "qmix-sdk")
+                sdk_dir = os.path.join("/usr", "share", "cetoni-sdk")
+                if os.path.isdir(sdk_dir):
+                    config.CETONI_SDK_PATH = sdk_dir
+                else:
+                    # fallback to old QmixSDK
+                    config.CETONI_SDK_PATH = os.path.join("/usr", "share", "qmix-sdk")
                 logger.info(f"Running on Ubuntu Linux - setting SDK path to '{config.CETONI_SDK_PATH}'")
             else:
                 config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK")
