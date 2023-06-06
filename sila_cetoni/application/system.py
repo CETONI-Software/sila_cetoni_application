@@ -317,7 +317,11 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 if self._state.is_operational() and is_dc_link_under_voltage_event(event):
                     self._state = ApplicationSystemState.STOPPED
                     logger.info("System entered 'Stopped' state")
-                    if self.__mobdos_error_provider is not None:
+                    if (
+                        self.__mobdos_error_provider is not None
+                        and self.__mobdos.battery is not None
+                        and self.__mobdos.battery.is_connected
+                    ):
                         voltage = f" ({self.__mobdos.battery.voltage}V)" if self.__mobdos.battery else ""
                         self.__mobdos_error_provider.add_error(
                             Error(
