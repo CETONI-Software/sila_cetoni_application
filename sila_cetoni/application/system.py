@@ -189,6 +189,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         """
         if self._config.has_battery:
             logger.info(f"Shutting down {'forced' if force else 'gracefully'}...")
+            os.system("sudo journalctl --flush")
             os.system(f"({'' if force else 'sleep 15'}; sudo shutdown now) &")
 
     @classmethod
