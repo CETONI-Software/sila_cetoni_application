@@ -470,6 +470,16 @@ class ApplicationSystem(ApplicationSystemBase):
             return self._config.devices + self.__cetoni_application_system.device_config.devices
         return self._config.devices
 
+    @ApplicationSystemBase.state.getter
+    def state(self) -> ApplicationSystemState:
+        if (
+            self.__cetoni_application_system is not None
+            and self.__cetoni_application_system.state.is_stopped()
+            and self._state.is_operational()
+        ):
+            return self.__cetoni_application_system.state
+        return super().state
+
     @staticmethod
     def ensure_operational(feature: Feature):
         """
