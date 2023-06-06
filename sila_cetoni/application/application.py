@@ -106,6 +106,10 @@ class Application(Singleton):
         return self.__config
 
     @property
+    def servers(self) -> List[SilaServer]:
+        return self.__servers
+
+    @property
     def tasks_queue(self) -> Queue[Task]:
         """
         Returns the tasks queue that can be used to run tasks in the main thread
@@ -147,6 +151,8 @@ class Application(Singleton):
             logger.info("No SiLA Servers to run")
             self.__system.stop()
             return
+
+        self.__system.on_servers_created(self.__servers)
 
         try:
             self.__start_servers()

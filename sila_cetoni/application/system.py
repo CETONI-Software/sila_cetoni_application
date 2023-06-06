@@ -49,7 +49,9 @@ from .singleton import ABCSingleton
 
 if TYPE_CHECKING:
     from sila2.framework import Command, Feature, Property
+    from sila2.server import SilaServer
 
+    from sila_cetoni.core.sila.core_service.feature_implementations.errorprovider_impl import ErrorProviderImpl
     from sila_cetoni.mobdos import CetoniMobDosDevice
 
     from .cetoni_device_configuration import CetoniDeviceConfiguration
@@ -109,6 +111,10 @@ class ApplicationSystemBase(ABCSingleton):
     def shutdown(self, force: bool = False):
         raise NotImplementedError()
 
+    @abstractmethod
+    def on_servers_created(self, servers: List[SilaServer]):
+        raise NotImplementedError()
+
 
 class CetoniApplicationSystem(ApplicationSystemBase):
     """
@@ -121,6 +127,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
     __bus_monitoring_thread: threading.Thread
 
     __mobdos: Optional[CetoniMobDosDevice]
+    __mobdos_error_provider: Optional[ErrorProviderImpl]
     __shutdown_time: datetime = None  # class variable
     __traffic_monitoring_thread: Thread
 
@@ -153,6 +160,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         except IndexError:
             self.__mobdos = None
             self.__traffic_monitoring_thread = None
+
+        self.__mobdos_error_provider = None
 
     def start(self):
         """
@@ -191,6 +200,17 @@ class CetoniApplicationSystem(ApplicationSystemBase):
             logger.info(f"Shutting down {'forced' if force else 'gracefully'}...")
             os.system("sudo journalctl --flush")
             os.system(f"({'' if force else 'sleep 15'}; sudo shutdown now) &")
+
+    def on_servers_created(self, servers: List[SilaServer]):
+        from sila_cetoni.mobdos.sila.mobdos_service.server import Server as MobDosServer
+
+        if len(servers) > 1 or not isinstance(servers[0], MobDosServer):
+            logger.error(
+                f"Server {servers[0]} is not MobDos server or there is more than 1 server! Not able to post CAN bus "
+                f"events to ErrorProvider!"
+            )
+        else:
+            self.__mobdos_error_provider = servers[0].errorprovider
 
     @classmethod
     def monitor_traffic(cls, klass):
@@ -258,6 +278,7 @@ class CetoniApplicationSystem(ApplicationSystemBase):
 
         from qmixsdk import qmixbus
 
+        from sila_cetoni.core.sila.core_service.feature_implementations.errorprovider_impl import Error, SeverityLevel
         from sila_cetoni.pumps import CetoniPumpDevice
 
         DC_LINK_UNDER_VOLTAGE = 0x3220
@@ -277,6 +298,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 and event.data[0] == qmixbus.GuardEventId.heartbeat_err_resolved.value
             )
 
+        max_seconds_without_battery = self.__application_config.cetoni_max_time_without_battery.total_seconds()
+
         seconds_stopped = 0
         while not self._state.shutting_down():
             time.sleep(1)
@@ -294,16 +317,27 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 if self._state.is_operational() and is_dc_link_under_voltage_event(event):
                     self._state = ApplicationSystemState.STOPPED
                     logger.info("System entered 'Stopped' state")
+                    if self.__mobdos_error_provider is not None:
+                        voltage = f" ({self.__mobdos.battery.voltage}V)" if self.__mobdos.battery else ""
+                        self.__mobdos_error_provider.add_error(
+                            Error(
+                                SeverityLevel.CRITICAL,
+                                f"Supply voltage{voltage} is too low for the pump drive. Pumping is not possible at "
+                                f"the moment. (Source event: {event.string!r})",
+                            )
+                        )
                     time.sleep(1)  # wait for the Atmel to catch up and detect the missing battery/external power
                     continue
 
             if (
                 self._state.is_stopped()
                 and self.__mobdos.battery is not None
+                and not self.__mobdos.battery.is_connected
                 and not self.__mobdos.battery.is_secondary_source_connected
             ):
                 seconds_stopped += 1
-                if seconds_stopped > self.__application_config.cetoni_max_time_without_battery.total_seconds():
+                logger.debug(f"{seconds_stopped} seconds without any power (max: {max_seconds_without_battery})")
+                if seconds_stopped > max_seconds_without_battery:
                     logger.info("Shutting down because battery has been removed for too long")
                     ApplicationSystem().shutdown(True)
 
@@ -320,6 +354,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 self._state = ApplicationSystemState.OPERATIONAL
                 logger.info("System entered 'Operational' state")
                 seconds_stopped = 0
+                if self.__mobdos_error_provider is not None:
+                    self.__mobdos_error_provider.resolve_error()
                 for device in self._config.devices:
                     logger.debug(f"Setting device {device} operational")
                     try:
@@ -420,6 +456,10 @@ class ApplicationSystem(ApplicationSystemBase):
         from .application import Application  # delayed import to break dependency cycle
 
         Application().stop()
+
+    def on_servers_created(self, servers: List[SilaServer]):
+        if self.__cetoni_application_system is not None:
+            self.__cetoni_application_system.on_servers_created(servers)
 
     @property
     def all_devices(self) -> List[Device]:
