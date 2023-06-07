@@ -358,7 +358,10 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 self._state = ApplicationSystemState.OPERATIONAL
                 logger.info("System entered 'Operational' state")
                 seconds_stopped = 0
-                if self.__mobdos_error_provider is not None:
+                if (
+                    self.__mobdos_error_provider is not None
+                    and self.__mobdos_error_provider.last_error.description.startswith("Supply voltage")
+                ):
                     self.__mobdos_error_provider.resolve_error()
                 for device in self._config.devices:
                     logger.debug(f"Setting device {device} operational")
