@@ -171,6 +171,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         self._config.start_bus_and_enable_devices()
         if self._config.has_battery:
             self.__start_bus_monitoring()
+        for device in filter(lambda d: hasattr(d, "start"), self._config.devices):
+            device.start()
 
     def stop(self):
         """
@@ -185,6 +187,8 @@ class CetoniApplicationSystem(ApplicationSystemBase):
         if previous_state.is_operational():
             self._config.stop_bus()
         self._config.close_bus()
+        for device in filter(lambda d: hasattr(d, "stop"), self._config.devices):
+            device.stop()
 
     def shutdown(self, force: bool = False):
         """
