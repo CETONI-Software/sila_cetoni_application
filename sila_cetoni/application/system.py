@@ -302,9 +302,40 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 and event.data[0] == qmixbus.GuardEventId.heartbeat_err_resolved.value
             )
 
+        def set_system_state(state: ApplicationSystemState):
+            self._state = state
+            logger.info(f"System entered {state.value!r} state")
+
+        def resolve_supply_voltage_error():
+            if (
+                self.__mobdos_error_provider is not None
+                and self.__mobdos_error_provider.last_error.description.startswith("Supply voltage")
+            ):
+                self.__mobdos_error_provider.resolve_error()
+
+        def try_set_pump_drive_operational():
+            success = True
+            for device in self._config.devices:
+                logger.debug(f"Setting device {device} operational")
+                try:
+                    device.set_operational()
+                    if isinstance(device, CetoniPumpDevice):
+                        if not device.device_handle.is_position_sensing_initialized():
+                            config = ServerConfiguration(device.name.replace("_", " "), self._config.name)
+                            drive_pos_counter = config["pump"].getint("drive_position_counter")
+                            if drive_pos_counter is not None:
+                                logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
+                                device.device_handle.restore_position_counter_value(drive_pos_counter)
+                except qmixbus.DeviceError as err:
+                    logger.error(f"Failed to set device {device} operational. Error: {err}", exc_info=err)
+                    success = False
+            return success
+
         max_seconds_without_battery = self.__application_config.cetoni_max_time_without_battery.total_seconds()
 
         seconds_stopped = 0
+        heartbeat_error_active = False
+
         while not self._state.shutting_down():
             time.sleep(1)
 
@@ -312,15 +343,17 @@ class CetoniApplicationSystem(ApplicationSystemBase):
             if event.is_valid():
                 try:
                     logger.debug(
-                        f"event id: {event.event_id}, device handle: {event.device.handle}, "
-                        f"node id: {event.device.get_node_id()}, data: {event.data}, message: {event.string}"
+                        f"{event.event_id=}, {event.device.handle=}, {event.device.get_node_id()=}, {event.data=!r}, "
+                        f"{event.string=!r}"
                     )
                 except qmixbus.DeviceError as err:
                     logger.warning(f"received event is faulty: {err!r}", exc_info=err)
+                    logger.warning(f"{event.event_id=}, {event.data=!r}, {event.string=!r}")
 
                 if self._state.is_operational() and is_dc_link_under_voltage_event(event):
-                    self._state = ApplicationSystemState.STOPPED
-                    logger.info("System entered 'Stopped' state")
+                    set_system_state(ApplicationSystemState.STOPPED)
+                    heartbeat_error_active = True
+                    time.sleep(1)  # wait for the Atmel to catch up and detect the missing battery/external power
                     if (
                         self.__mobdos_error_provider is not None
                         and self.__mobdos.battery is not None
@@ -334,52 +367,59 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                                 f"the moment. (Source event: {event.string!r})",
                             )
                         )
-                    time.sleep(1)  # wait for the Atmel to catch up and detect the missing battery/external power
                     continue
 
-            if (
-                self._state.is_stopped()
-                and self.__mobdos.battery is not None
+            no_power_source_connected = (
+                self.__mobdos.battery is not None
                 and not self.__mobdos.battery.is_connected
                 and not self.__mobdos.battery.is_secondary_source_connected
-            ):
+            )
+
+            if not heartbeat_error_active and no_power_source_connected:
+                logger.warning(f"EPOS is already back but Atmel is still off")
+
+            if self._state.is_stopped() and no_power_source_connected:
                 seconds_stopped += 1
                 logger.debug(f"{seconds_stopped} seconds without any power (max: {max_seconds_without_battery})")
                 if seconds_stopped > max_seconds_without_battery:
                     logger.info("Shutting down because battery has been removed for too long")
                     ApplicationSystem().shutdown(True)
 
+            is_heartbeat_err_resolved = is_heartbeat_err_resolved_event(event)
+            logger.debug(f"{is_heartbeat_err_resolved=}")
             if self.__mobdos.battery is not None:
                 logger.debug(
-                    f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}, "
-                    f"bat conn: {self.__mobdos.battery.is_connected}, "
-                    f"ext conn {self.__mobdos.battery.is_secondary_source_connected}"
+                    f"{self.__mobdos.battery.is_connected=}, {self.__mobdos.battery.is_secondary_source_connected=}"
                 )
-            else:
-                logger.debug(f"heartbeat resolved: {is_heartbeat_err_resolved_event(event)}")
 
-            if self._state.is_stopped() and is_heartbeat_err_resolved_event(event):
-                self._state = ApplicationSystemState.OPERATIONAL
-                logger.info("System entered 'Operational' state")
-                seconds_stopped = 0
-                if (
-                    self.__mobdos_error_provider is not None
-                    and self.__mobdos_error_provider.last_error.description.startswith("Supply voltage")
+            is_any_power_source_connected = self.__mobdos.battery is not None and (
+                self.__mobdos.battery.is_connected or self.__mobdos.battery.is_secondary_source_connected
+            )
+
+            if self._state.is_stopped():
+                if not is_heartbeat_err_resolved and is_any_power_source_connected:
+                    logger.warning(f"New battery connected but EPOS did not send heartbeat error resolved event")
+
+                is_pump_operational = False
+
+                if is_heartbeat_err_resolved or is_any_power_source_connected:
+                    set_system_state(ApplicationSystemState.OPERATIONAL)
+                    seconds_stopped = 0
+                    resolve_supply_voltage_error()
+                    is_pump_operational = try_set_pump_drive_operational()
+
+                if is_heartbeat_err_resolved or (
+                    # If we have power again and could successfully set the pump drive operational, then the heartbeat
+                    # error is resolved even though the EPOS did not send the event (yet).
+                    not is_heartbeat_err_resolved and is_any_power_source_connected and is_pump_operational
                 ):
-                    self.__mobdos_error_provider.resolve_error()
-                for device in self._config.devices:
-                    logger.debug(f"Setting device {device} operational")
-                    try:
-                        device.set_operational()
-                        if isinstance(device, CetoniPumpDevice):
-                            if not device.device_handle.is_position_sensing_initialized():
-                                config = ServerConfiguration(device.name.replace("_", " "), self._config.name)
-                                drive_pos_counter = config["pump"].getint("drive_position_counter")
-                                if drive_pos_counter is not None:
-                                    logger.debug(f"Restoring drive position counter: {drive_pos_counter}")
-                                    device.device_handle.restore_position_counter_value(drive_pos_counter)
-                    except qmixbus.DeviceError as err:
-                        logger.error(f"Failed to set device {device} operational. Error: {err}", exc_info=err)
+                    heartbeat_error_active = False
+
+            # In case the EPOS sends the heartbeat error resolved event *after* the new battery is connected we still
+            # need to set the drive operational
+            if is_heartbeat_err_resolved:
+                try_set_pump_drive_operational()
+                heartbeat_error_active = False
 
 
 class ApplicationSystem(ApplicationSystemBase):
