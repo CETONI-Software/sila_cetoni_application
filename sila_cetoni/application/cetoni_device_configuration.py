@@ -11,7 +11,7 @@ from lxml import etree, objectify
 from qmixsdk import qmixbus
 
 from sila_cetoni.config import CETONI_SDK_PATH
-from sila_cetoni.pkgutil import SiLACetoniFirstPartyPackage, available_packages
+from sila_cetoni.package_util import SiLACetoniFirstPartyPackage, available_packages
 
 from .configuration import DeviceConfiguration
 from .device import CetoniDevice

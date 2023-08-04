@@ -26,9 +26,9 @@ ________________________________________________________________________
 
 from __future__ import annotations
 
-import os
 import concurrent.futures
 import logging
+import os
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Callable, Dict, List
@@ -36,7 +36,7 @@ from typing import Callable, Dict, List
 import typer
 from sila2.server import SilaServer
 
-from sila_cetoni.pkgutil import available_packages
+from sila_cetoni.package_util import available_packages
 
 from .application_configuration import ApplicationConfiguration
 from .server_configuration import ServerConfiguration
@@ -95,7 +95,6 @@ class Application(Singleton):
     __tasks_queue: Queue[Task]
 
     def __init__(self, config_file_path: Path):
-
         self.__config = ApplicationConfiguration(config_file_path.stem, config_file_path)
         self.__servers = []
 
@@ -260,7 +259,6 @@ class Application(Singleton):
         available_pkgs = available_packages()
 
         for device in self.__system.all_devices:
-
             logger.info(f"Creating server for {device}")
 
             # common args for all servers

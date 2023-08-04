@@ -39,7 +39,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from sila2.framework import UndefinedExecutionError
 
-from sila_cetoni.pkgutil import available_packages
+from sila_cetoni.package_util import available_packages
 
 from .application_configuration import ApplicationConfiguration
 from .configuration import DeviceConfiguration
@@ -411,7 +411,9 @@ class CetoniApplicationSystem(ApplicationSystemBase):
                 if is_heartbeat_err_resolved or (
                     # If we have power again and could successfully set the pump drive operational, then the heartbeat
                     # error is resolved even though the EPOS did not send the event (yet).
-                    not is_heartbeat_err_resolved and is_any_power_source_connected and is_pump_operational
+                    not is_heartbeat_err_resolved
+                    and is_any_power_source_connected
+                    and is_pump_operational
                 ):
                     heartbeat_error_active = False
 
@@ -467,7 +469,6 @@ class ApplicationSystem(ApplicationSystemBase):
         logger.info("Application system started")
 
     def stop(self):
-
         if threading.current_thread() is not threading.main_thread():
             # stop has to be executed in main thread because stopping the CetoniApplicationSystem has to run in the main
             # thread (because it was started from the main thread as well)
@@ -489,7 +490,6 @@ class ApplicationSystem(ApplicationSystemBase):
                 continue
 
     def shutdown(self, force: bool = False):
-
         if threading.current_thread() is not threading.main_thread():
             # shutdown has to be executed in main thread because it calls `stop()` which has to run in the main thread
 

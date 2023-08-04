@@ -12,7 +12,7 @@ import jsonschema.exceptions
 from isodate import parse_duration
 
 from sila_cetoni.device_driver_abc import DeviceDriverABC
-from sila_cetoni.pkgutil import available_packages
+from sila_cetoni.package_util import available_packages
 
 from ..application import resource_dir
 from .configuration import DeviceConfiguration
@@ -24,10 +24,7 @@ SCHEMA: Dict
 with open(Path((resource_dir)).joinpath(CONFIG_SCHEMA_FILE_NAME), "rt") as schema_file:
     SCHEMA = json.load(schema_file)
 
-__all__ = [
-    "SCHEMA",
-    "ApplicationConfiguration"
-]
+__all__ = ["SCHEMA", "ApplicationConfiguration"]
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +108,6 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     )
 
     def __init__(self, name: str, config_file_path: Path) -> None:
-
         load_available_add_on_schemas()
 
         super().__init__(name, config_file_path)
