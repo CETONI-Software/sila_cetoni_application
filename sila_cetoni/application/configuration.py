@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Generic, List, Type, TypeVar
+from typing import Generic, List, TypeVar
 
 from .device import Device
 
@@ -32,7 +32,7 @@ class Configuration(ABC):
         return self._name
 
     @property
-    def file_path(self) -> str:
+    def file_path(self) -> Path:
         return self._file_path
 
     def __repr__(self) -> str:

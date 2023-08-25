@@ -6,6 +6,7 @@ import platform
 import re
 import uuid
 from configparser import ConfigParser
+from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple
 
 import safer
@@ -51,7 +52,7 @@ class ServerConfiguration(Configuration):
             :param name: Name of the config file (should be the same as the server's name that this config is for)
             :param subdir: (optional) The subdirectory to store the config file in
         """
-        super().__init__(name, os.path.join(self.__config_dir(subdir), self.__slugify(name) + ".ini"))
+        super().__init__(name, Path(os.path.join(self.__config_dir(subdir), self.__slugify(name) + ".ini")))
 
     def __del__(self):
         try:
@@ -211,9 +212,9 @@ class ServerConfiguration(Configuration):
 
             :param ip: The IP address to store into the certificate
         """
-        uuid = self.__parser["server"]["uuid"]
-        logger.info(f"Generating self-signed certificate for server {uuid}")
-        private_key, cert_chain = generate_self_signed_certificate(uuid, ip)
+        server_uuid = uuid.UUID(self.__parser["server"]["uuid"])
+        logger.info(f"Generating self-signed certificate for server {server_uuid}")
+        private_key, cert_chain = generate_self_signed_certificate(server_uuid, ip)
         self.__parser["server"]["ssl_private_key"] = private_key.decode("utf-8")
         self.__parser["server"]["ssl_certificate"] = cert_chain.decode("utf-8")
 
@@ -276,7 +277,7 @@ class ServerConfiguration(Configuration):
         The keys of the returned dictionary are the axis names and the values are the position counter values.
         """
         if self.__parser.has_section("axis_position_counters"):
-            return dict(self.__parser["axis_position_counters"])
+            return dict(self.__parser["axis_position_counters"])  # type: ignore
         else:
             return dict()
 
@@ -288,7 +289,7 @@ class ServerConfiguration(Configuration):
         The keys of the dictionary need to be the axis names and the values are the position counter values.
         """
         logger.info(position_counters)
-        self.__parser["axis_position_counters"] = position_counters
+        self.__parser["axis_position_counters"] = position_counters  # type: ignore
 
     # v2 ---------------------------------------------------------------------
 
