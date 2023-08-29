@@ -168,10 +168,16 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def version(self) -> int:
+        """
+        The version of the configuration file
+        """
         return self.__version
 
     @property
     def server_ip(self) -> str:
+        """
+        The IP address on which to start the SiLA Servers (defaults to the local IP address)
+        """
         return self.__server_ip
 
     @server_ip.setter
@@ -185,6 +191,9 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def server_base_port(self) -> int:
+        """
+        The port number for the first SiLA Server
+        """
         return self.__server_base_port
 
     @server_base_port.setter
@@ -199,6 +208,9 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def enable_discovery(self) -> bool:
+        """
+        Enable or disable discovery of all SiLA Servers (whether they announce themselves in the network)
+        """
         return self.__enable_discovery
 
     @enable_discovery.setter
@@ -213,6 +225,9 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def log_level(self) -> str:
+        """
+        The logging level of the application
+        """
         return self.__log_level
 
     @log_level.setter
@@ -226,15 +241,25 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def log_file_dir(self) -> Optional[Path]:
+        """
+        The directory to write log files to (if not given log messages will only be printed to standard out)
+        """
         return self.__log_file_dir
 
     @log_file_dir.setter
     def log_file_dir(self, log_file_dir: Path):
+        """
+        Sets the `log_file_dir` property
+        """
         logger.warning(f"Overwriting log_file_dir with {log_file_dir!r} (was {self.__log_file_dir!r})")
         self.__log_file_dir = log_file_dir
 
     @property
     def regenerate_certificates(self) -> bool:
+        """
+        Whether to force regeneration of the self-signed certificates (e.g. if the IP address of the machine running the
+        servers changed)
+        """
         return self.__regenerate_certificates
 
     @regenerate_certificates.setter
@@ -245,12 +270,17 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         """
         if regenerate_certificates is not self.DEFAULT_REGENERATE_CERTIFICATES:
             logger.warning(
-                f"Overwriting regenerate_certificates with {regenerate_certificates!r} (was {self.regenerate_certificates!r})"
+                f"Overwriting regenerate_certificates with {regenerate_certificates!r} (was "
+                f"{self.regenerate_certificates!r})"
             )
             self.__regenerate_certificates = regenerate_certificates
 
     @property
     def scan_devices(self) -> bool:
+        """
+        Whether to automatically scan for supported connected devices (e.g. scan for available Sartorius balances if the
+        sila_cetoni_balance package is installed)
+        """
         return self.__scan_devices
 
     @scan_devices.setter
@@ -264,12 +294,17 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def simulate_missing(self) -> bool:
+        """
+        Whether to try and simulate devices which are not explicitly set to 'simulated' in the config file if the
+        application cannot connect to them
+        """
         return self.__simulate_missing
 
     @simulate_missing.setter
     def simulate_missing(self, simulate_missing: bool):
         """
-        Sets the `simulate_missing` property but only if the given `simulate_missing` is not the default value of this property
+        Sets the `simulate_missing` property but only if the given `simulate_missing` is not the default value of this
+        property
         """
         if simulate_missing is not self.DEFAULT_SIMULATE_MISSING:
             logger.warning(f"Overwriting simulate_missing with {simulate_missing!r} (was {self.simulate_missing!r})")
@@ -277,12 +312,30 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
 
     @property
     def cetoni_device_config_path(self) -> Optional[Path]:
+        """
+        The path to the CETONI device configuration folder if present in the configuration
+        """
         return self.__cetoni_device_config_path
 
     @property
     def cetoni_max_time_without_battery(self) -> timedelta:
+        """
+        How long the device will stay on at most without a battery (default: 20 seconds)
+
+        Note
+        ----
+        This is a property only used for the battery powered CETONI mobile dosage units
+        """
         return self.__cetoni_max_time_without_battery
 
     @property
     def cetoni_max_time_without_traffic(self) -> timedelta:
+        """
+        How long the device will stay on without any SiLA Command calls or Property requests to non-standard features
+        (default: 10 minutes)
+
+        Note
+        ----
+        This is a property only used for the battery powered CETONI mobile dosage units
+        """
         return self.__cetoni_max_time_without_traffic
