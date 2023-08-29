@@ -93,7 +93,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     __SCHEMA_PROPERTIES = SCHEMA["definitions"]["DeviceConfiguration"]["properties"]
     DEFAULT_SERVER_IP: str = LOCAL_IP
     DEFAULT_SERVER_BASE_PORT: int = int(__SCHEMA_PROPERTIES["server_base_port"]["default"])
-    DEFAULT_ENABLE_DISCOVERY: bool = int(__SCHEMA_PROPERTIES["enable_discovery"]["default"])
+    DEFAULT_ENABLE_DISCOVERY: bool = bool(__SCHEMA_PROPERTIES["enable_discovery"]["default"])
     DEFAULT_LOG_LEVEL: str = __SCHEMA_PROPERTIES["log_level"]["default"]
     DEFAULT_REGENERATE_CERTIFICATES: bool = __SCHEMA_PROPERTIES["regenerate_certificates"]["default"]
     DEFAULT_SCAN_DEVICES: bool = __SCHEMA_PROPERTIES["scan_devices"]["default"]
@@ -156,7 +156,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         logger.debug(f"JSON devices {self.__json_devices}")
         self._devices = []
         for package in available_packages().values():
-            self._devices.extend(package.parse_devices(self.__json_devices))
+            self._devices.extend(package.parse_devices(self.__json_devices))  # type: ignore
 
     def __str__(self) -> str:
         return (

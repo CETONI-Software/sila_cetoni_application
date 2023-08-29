@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, TypeVar
 
 from sila_cetoni.device_driver_abc import DeviceDriverABC
 
@@ -120,7 +120,7 @@ try:
             The type of the device handle (e.g. `qmixpump.Pump`)
         """
 
-        _device_handle: _QmixBusDeviceT
+        _device_handle: Optional[_QmixBusDeviceT]
 
         _valves: List[qmixvalve.Valve]
         _controller_channels: List[qmixcontroller.ControllerChannel]
@@ -128,7 +128,7 @@ try:
 
         _device_properties: Dict[str, Any]
 
-        def __init__(self, name: str, device_type: str = "", handle: _QmixBusDeviceT = None) -> None:
+        def __init__(self, name: str, device_type: str = "", handle: Optional[_QmixBusDeviceT] = None) -> None:
             super().__init__(name=name, device_type=device_type, manufacturer="CETONI", simulated=False)
 
             self._device_handle = handle
@@ -149,7 +149,7 @@ try:
             )
 
         @property
-        def device_handle(self) -> _QmixBusDeviceT:
+        def device_handle(self) -> Optional[_QmixBusDeviceT]:
             return self._device_handle
 
         @property
@@ -191,6 +191,9 @@ try:
             """
             Set the device (and all of its valves, if present) into operational state
             """
+            if self._device_handle is None:
+                return
+
             logger.info("cetoni set_operational")
             self._device_handle.set_communication_state(qmixbus.CommState.operational)
             for valve in self._valves:
@@ -217,10 +220,9 @@ class ThirdPartyDevice(Device, Generic[_DeviceInterfaceT]):
             The type of the device driver interface (e.g. `BalanceInterface`)
     """
 
-    _device: _DeviceInterfaceT
+    _device: Optional[_DeviceInterfaceT]
 
     def __init__(self, name: str, json_data: Dict) -> None:
-
         # avoid circular import
         from .application_configuration import SCHEMA
 
@@ -235,13 +237,13 @@ class ThirdPartyDevice(Device, Generic[_DeviceInterfaceT]):
 
     def __repr__(self) -> str:
         return (
-            super().__repr__() + f"\b{(', ' + repr(self.port)) if hasattr(self, 'port') else ''}"
-            f"{', ' + repr(self.server_url) if hasattr(self, 'server_url') else ''}"
+            super().__repr__() + f"\b{(', ' + repr(self.port)) if hasattr(self, 'port') else ''}"  # type: ignore
+            f"{', ' + repr(self.server_url) if hasattr(self, 'server_url') else ''}"  # type: ignore
             f"{', ' + repr(self.device) if hasattr(self, 'device') else ''})"
         )
 
     @property
-    def device(self) -> _DeviceInterfaceT:
+    def device(self) -> Optional[_DeviceInterfaceT]:
         return self._device
 
     @device.setter

@@ -149,7 +149,7 @@ class Application(Singleton):
         if not self.__servers:
             logger.info("No SiLA Servers to run")
             self.__system.stop()
-            return
+            return True
 
         self.__system.on_servers_created(self.__servers)
 

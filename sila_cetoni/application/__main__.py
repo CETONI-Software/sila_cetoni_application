@@ -12,13 +12,6 @@ from . import __version__
 from .application import Application
 from .application_configuration import ApplicationConfiguration
 
-try:
-    import coloredlogs
-except ModuleNotFoundError:
-    print("Cannot find coloredlogs! Please install coloredlogs, if you'd like to have nicer logging output:")
-    print("`pip install coloredlogs`")
-
-
 app = typer.Typer()
 
 
@@ -37,10 +30,15 @@ _LOGGING_FORMAT = (
 def set_logging_level(log_level: str):
     logging_level = log_level.upper()
     try:
+        import coloredlogs
+
         coloredlogs.install(
             fmt=_LOGGING_FORMAT.format(thread_name_len=12), datefmt="%Y-%m-%d %H:%M:%S,%f", level=logging_level
         )
-    except NameError:
+    except ModuleNotFoundError:
+        print("Cannot find coloredlogs! Please install coloredlogs, if you'd like to have nicer logging output:")
+        print("`pip install coloredlogs`")
+
         logging.basicConfig(format=_LOGGING_FORMAT.format(thread_name_len=12), level=logging_level)
     return log_level
 
@@ -68,7 +66,7 @@ def main(
         case_sensitive=False,
         formats=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     ),
-    log_file_dir: Path = typer.Option(
+    log_file_dir: Optional[Path] = typer.Option(
         None,
         metavar="DIR",
         help="The directory to write log files to (if not given log messages will only be printed to standard out)",
@@ -153,7 +151,7 @@ def main(
         log_file_handler.setFormatter(logging.Formatter(_LOGGING_FORMAT.format(thread_name_len=60)))
         return log_file_handler
 
-    log_file_handler: logging.FileHandler = None
+    log_file_handler: Optional[logging.FileHandler] = None
     if log_file_dir is not None:
         log_file_handler = make_log_file_handler(log_file_dir, log_level)
         logging.getLogger().addHandler(log_file_handler)
@@ -186,9 +184,9 @@ def main(
     ):
         logging.info(f"Setting log level {application.config.log_level!r} from '{config_file}'")
         set_logging_level(application.config.log_level)
-        if log_file_dir is not None:
+        if log_file_dir is not None and log_file_handler is not None:
             logging.getLogger().removeHandler(log_file_handler)
-            log_file_handler = make_log_file_handler(application.config.log_file_dir, application.config.log_level)
+            log_file_handler = make_log_file_handler(log_file_dir, application.config.log_level)
             logging.getLogger().addHandler(log_file_handler)
 
     if not application.run():
