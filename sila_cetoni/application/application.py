@@ -208,7 +208,7 @@ class Application(Singleton):
                     self.__config.server_ip,
                     port,
                     private_key=server_config.ssl_private_key,
-                    cert_chain=server_config.ssl_certificate,
+                    cert_chain=server_config.ssl_certificate_for_ip(self.__config.server_ip),
                     ca_for_discovery=server_config.ssl_certificate,
                     enable_discovery=self.__config.enable_discovery,
                 )

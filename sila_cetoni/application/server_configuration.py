@@ -6,10 +6,13 @@ import platform
 import re
 import uuid
 from configparser import ConfigParser
+from ipaddress import IPv4Address
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple
 
 import safer
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
 from typing_extensions import Self
 
 if TYPE_CHECKING:
@@ -256,18 +259,60 @@ class ServerConfiguration(Configuration):
         self.__parser["server"]["port"] = str(server_port)
 
     @property
-    def ssl_private_key(self) -> Optional[bytes]:
+    def ssl_private_key(self) -> bytes:
         """
         The private key for the SSL certificate
         """
-        return self.__parser["server"].get("ssl_private_key").encode("utf-8")
+        return self.__parser["server"]["ssl_private_key"].encode("utf-8")
 
     @property
-    def ssl_certificate(self) -> Optional[bytes]:
+    def ssl_certificate(self) -> bytes:
         """
         The SSL certificate
         """
-        return self.__parser["server"].get("ssl_certificate").encode("utf-8")
+        return self.__parser["server"]["ssl_certificate"].encode("utf-8")
+
+    def ssl_certificate_for_ip(self, ip: str) -> bytes:
+        """
+        The SSL certificate with the given `ip` added as a *Subject Alternative Name*
+
+        This will return the already existing certificate if it already contains the `ip` as SAN, otherwise `ip` will be
+        added to the SANs first, and the modified certificate will be stored in the configuration file and returned.
+        """
+
+        cert = x509.load_pem_x509_certificate(self.ssl_certificate)
+
+        subject_alt_name_ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        subject_alt_name_ips = subject_alt_name_ext.value.get_values_for_type(x509.IPAddress)
+        ip_address = IPv4Address(ip)
+        if ip_address not in subject_alt_name_ips:
+            logger.warning(
+                f"IP address {ip} not present in SANs of certificate for server {self.server_uuid} - adding it..."
+            )
+
+            private_key = serialization.load_pem_private_key(self.ssl_private_key, password=None)
+            cert = (
+                x509.CertificateBuilder(
+                    cert.issuer,
+                    cert.subject,
+                    cert.public_key(),
+                    cert.serial_number,
+                    cert.not_valid_before,
+                    cert.not_valid_after,
+                    list(set(cert.extensions) - set([subject_alt_name_ext])),
+                )
+                .add_extension(
+                    x509.SubjectAlternativeName([x509.IPAddress(ip) for ip in (*subject_alt_name_ips, ip_address)]),
+                    critical=False,
+                )
+                .sign(private_key, hashes.SHA256())
+            )
+
+            cert_bytes = cert.public_bytes(serialization.Encoding.PEM)
+            self.__parser["server"]["ssl_certificate"] = cert_bytes.decode("utf-8")
+            self.write()
+
+        return self.ssl_certificate
 
     @property
     def axis_position_counters(self) -> Optional[Dict[str, int]]:
