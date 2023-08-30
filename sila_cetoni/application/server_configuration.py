@@ -220,6 +220,7 @@ class ServerConfiguration(Configuration):
         private_key, cert_chain = generate_self_signed_certificate(server_uuid, ip)
         self.__parser["server"]["ssl_private_key"] = private_key.decode("utf-8")
         self.__parser["server"]["ssl_certificate"] = cert_chain.decode("utf-8")
+        self.write()
 
     def write(self):
         """

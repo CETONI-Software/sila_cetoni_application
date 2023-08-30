@@ -191,7 +191,6 @@ class Application(Singleton):
                 server_config = ServerConfiguration(server.server_name, self.__system.device_config.name)
                 if self.__config.regenerate_certificates:
                     server_config.generate_self_signed_certificate(self.__config.server_ip)
-                    server_config.write()
 
                 port = self.__config.server_base_port + i
                 if server_config.server_port is not None:
