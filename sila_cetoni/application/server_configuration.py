@@ -6,14 +6,17 @@ import platform
 import re
 import uuid
 from configparser import ConfigParser
+from datetime import datetime, timedelta
 from ipaddress import IPv4Address
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, cast
 
 import safer
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from typing_extensions import Self
+
+from sila_cetoni.utils import pretty_timedelta_str
 
 if TYPE_CHECKING:
     from configparser import SectionProxy, _Section
@@ -314,6 +317,60 @@ class ServerConfiguration(Configuration):
             self.write()
 
         return self.ssl_certificate
+
+    def renew_certificate(self, renewal_period: timedelta = timedelta(days=365), force: bool = False) -> None:
+        """
+        Renews the server certificate if necessary (i.e. if the *not after* field is close (< 30 days) to expiration)
+
+        The renewed certificate is written to the config file and can be obtained by calling `ssl_certificate` again
+
+        Parameters
+        ----------
+        renewal_period : timedelta (default: 1 year)
+            How long to extend the certificate's validity
+            For a certificate that is still valid this means that the new *not after* field is extended by the
+            `renewal_period`.
+            For an already expired certificate this means that the new *not after* field is set to
+            `datetime.today() + renewal_period`.
+            This is done to have the longest possible valid certificate in both cases.
+        force : bool (default: False)
+            Whether to force renewal of the certificate even if it is not close to expiration
+        """
+
+        EXPIRY_THRESHOLD = timedelta(days=30)
+
+        cert = x509.load_pem_x509_certificate(self.ssl_certificate)
+
+        expiry_in = cert.not_valid_after - datetime.now()
+        if not force and expiry_in >= EXPIRY_THRESHOLD:
+            logger.info(f"Certificate for server {self.server_uuid} still valid for {pretty_timedelta_str(expiry_in)}")
+            return
+
+        is_expired = expiry_in.total_seconds() < 0
+        not_valid_after = (datetime.today() if is_expired else cert.not_valid_after) + renewal_period
+        logger.warning(
+            f"Renewing certificate for server {self.server_uuid} ({'expired' if is_expired else 'will expire in'} "
+            f"{pretty_timedelta_str(abs(expiry_in))}{' ago' if is_expired else ''}) because "
+            f"""{'it was forced'
+                    if force
+                    else f'this is less than the allowed threshold of {pretty_timedelta_str(EXPIRY_THRESHOLD)}'}. """
+            f"New expiration date is {not_valid_after.date()}"
+        )
+
+        private_key = serialization.load_pem_private_key(self.ssl_private_key, password=None)
+        cert = x509.CertificateBuilder(
+            cert.issuer,
+            cert.subject,
+            cert.public_key(),
+            cert.serial_number,
+            cert.not_valid_before,
+            not_valid_after,
+            cast(List[x509.Extension], cert.extensions),
+        ).sign(private_key, hashes.SHA256())
+
+        cert_bytes = cert.public_bytes(serialization.Encoding.PEM)
+        self.__parser["server"]["ssl_certificate"] = cert_bytes.decode("utf-8")
+        self.write()
 
     @property
     def axis_position_counters(self) -> Optional[Dict[str, int]]:
