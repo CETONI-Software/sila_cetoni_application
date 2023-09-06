@@ -5,12 +5,6 @@ import os
 import platform
 import sys
 
-try:
-    import coloredlogs
-except ModuleNotFoundError:
-    print("Cannot find coloredlogs! Please install coloredlogs, if you'd like to have nicer logging output:")
-    print("`pip install coloredlogs`")
-
 import sila_cetoni.config as config
 from sila_cetoni.utils import get_version
 
@@ -27,13 +21,19 @@ logger = logging.getLogger(__name__)
 _logging_level = logging.ERROR if _NO_EXEC_OPTION in sys.argv else logging.INFO
 LOGGING_FORMAT = "%(asctime)s [%(threadName)-12.12s] %(levelname)-8s| %(name)s %(module)s.%(funcName)s: %(message)s"
 try:
+    import coloredlogs
+
     coloredlogs.install(fmt=LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S,%f", level=_logging_level)
-except NameError:
+except (ModuleNotFoundError, ImportError):
+    print("Cannot find coloredlogs! Please install coloredlogs, if you'd like to have nicer logging output:")
+    print("`pip install coloredlogs`")
+
     logging.basicConfig(format=LOGGING_FORMAT, level=_logging_level)
 
 
-if _CETONI_SDK_PATH_KEY in os.environ:
-    config.CETONI_SDK_PATH = os.path.expanduser(os.environ.get(_CETONI_SDK_PATH_KEY))
+sdk_path = os.environ.get(_CETONI_SDK_PATH_KEY)
+if sdk_path is not None:
+    config.CETONI_SDK_PATH = os.path.expanduser(sdk_path)
     logger.info(f"Using SDK path from environment variable - setting SDK path to '{config.CETONI_SDK_PATH}'")
 elif config.CETONI_SDK_PATH and os.path.exists(config.CETONI_SDK_PATH):
     logger.info(f"Setting SDK path to '{config.CETONI_SDK_PATH}'")
@@ -53,7 +53,7 @@ else:
             config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK_Raspi")
             logger.info(f"Running on RaspberryPi - setting SDK path to '{config.CETONI_SDK_PATH}'")
         except (ModuleNotFoundError, ImportError):
-            if "Ubuntu" in os.uname().version:
+            if "Ubuntu" in os.uname().version:  # type: ignore
                 sdk_dir = os.path.join("/usr", "share", "cetoni-sdk")
                 if os.path.isdir(sdk_dir):
                     config.CETONI_SDK_PATH = sdk_dir
