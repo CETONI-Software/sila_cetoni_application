@@ -100,10 +100,11 @@ except (ModuleNotFoundError, ImportError) as err:
         env["LD_LIBRARY_PATH"] = os.pathsep.join(
             (os.path.join(config.CETONI_SDK_PATH, "lib"), env.get("LD_LIBRARY_PATH", ""))
         )
-        # uncomment the following line if you get an error like 'undefined symbol: __atomic_exchange_8'
-        env["LD_PRELOAD"] = os.pathsep.join(
-            ("/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0", env.get("LD_PRELOAD", ""))
-        )
+
+        # this is to fix errors like 'undefined symbol: __atomic_exchange_8'
+        libatomic_path = "/usr/lib/arm-linux-gnueabihf/libatomic.so.1.2.0"
+        if os.path.exists(libatomic_path):
+            env["LD_PRELOAD"] = os.pathsep.join((libatomic_path, env.get("LD_PRELOAD", "")))
         # logger.info(env)
 
         if sys.argv[0] == "-m":
