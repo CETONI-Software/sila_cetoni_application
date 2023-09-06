@@ -50,8 +50,15 @@ else:
         try:
             import RPi.GPIO
 
-            config.CETONI_SDK_PATH = os.path.join(os.path.expanduser("~"), "CETONI_SDK_Raspi")
-            logger.info(f"Running on RaspberryPi - setting SDK path to '{config.CETONI_SDK_PATH}'")
+            arch, _ = platform.architecture()
+
+            sdk_dir = os.path.join(os.path.expanduser("~"), f"CETONI_SDK_Raspi_{arch}")
+            if not os.path.isdir(sdk_dir) and arch == "32bit":
+                # fall back to old name of 32bit SDK
+                sdk_dir = sdk_dir[:-6]
+            config.CETONI_SDK_PATH = sdk_dir
+
+            logger.info(f"Running on {arch} RaspberryPi - setting SDK path to '{config.CETONI_SDK_PATH}'")
         except (ModuleNotFoundError, ImportError):
             if "Ubuntu" in os.uname().version:  # type: ignore
                 sdk_dir = os.path.join("/usr", "share", "cetoni-sdk")
