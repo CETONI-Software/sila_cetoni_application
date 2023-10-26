@@ -8,6 +8,13 @@ import sys
 import sila_cetoni.config as config
 from sila_cetoni.utils import get_version
 
+try:
+    # in case anyone wants to use the Qt bindings this has to be imported before qmixsdk to ensure the Qt DLLs used by
+    # PySide2 are also used by the SDK
+    from PySide2 import QtCore
+except (ModuleNotFoundError, ImportError):
+    pass
+
 __version__ = get_version(__name__)
 
 resource_dir = os.path.join(os.path.dirname(__file__), "resources")
@@ -80,7 +87,7 @@ sys.path.append(os.path.join(config.CETONI_SDK_PATH, "lib", "python", "src"))
 try:
     import qmixsdk
 
-    logger.info(f"Found CETONI SDK in {config.CETONI_SDK_PATH}")
+    logger.info(f"Found CETONI SDK in {config.CETONI_SDK_PATH} ({qmixsdk.__file__})")
 except (ModuleNotFoundError, ImportError) as err:
     if platform.system() == "Windows" or _NO_EXEC_OPTION in sys.argv:
         logger.error(
