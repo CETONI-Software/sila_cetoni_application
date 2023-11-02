@@ -31,7 +31,7 @@ import logging
 import os
 from pathlib import Path
 from queue import Empty, Queue
-from typing import Callable, Dict, List
+from typing import TYPE_CHECKING, Callable, Dict, List, cast
 
 import typer
 from sila2.server import SilaServer
@@ -42,6 +42,9 @@ from .application_configuration import ApplicationConfiguration
 from .server_configuration import ServerConfiguration
 from .singleton import Singleton
 from .system import ApplicationSystem
+
+if TYPE_CHECKING:
+    from PySide2.QtCore import QObject
 
 DEFAULT_BASE_PORT = 50051
 
@@ -92,11 +95,15 @@ class Application(Singleton):
     __config: ApplicationConfiguration  # parsed from `config_file`
     __servers: List[SilaServer]
 
+    __remote_objects: List[QObject]
+
     __tasks_queue: Queue[Task]
 
     def __init__(self, config_file_path: Path):
         self.__config = ApplicationConfiguration(config_file_path.stem, config_file_path)
         self.__servers = []
+
+        self.__remote_objects = []
 
         self.__tasks_queue = Queue()
 
@@ -130,6 +137,7 @@ class Application(Singleton):
             the servers could not be started.
         """
 
+        self.__config.sanity_check()
         self.__config.parse_devices()
         self.__system = ApplicationSystem(self.__config)
         try:
@@ -139,36 +147,79 @@ class Application(Singleton):
             self.stop()
             raise typer.Exit(1)
 
+        if self.__config.sila:
+            try:
+                self.__create_servers()
+            except Exception as err:
+                logger.error(f"Failed to create SiLA servers", exc_info=err)
+                self.stop()
+                raise typer.Exit(2)
+
+            if not self.__servers:
+                logger.info("No SiLA Servers to run")
+                self.__system.stop()
+                return True
+
+            self.__system.on_servers_created(self.__servers)
+
         try:
-            self.__create_servers()
-        except Exception as err:
-            logger.error(f"Failed to create SiLA servers", exc_info=err)
-            self.stop()
-            raise typer.Exit(2)
-
-        if not self.__servers:
-            logger.info("No SiLA Servers to run")
-            self.__system.stop()
-            return True
-
-        self.__system.on_servers_created(self.__servers)
-
-        try:
-            self.__start_servers()
-            if self.__system.state.shutting_down():
-                return False
-            print("Press Ctrl-C to stop...", flush=True)
-            while not self.__system.state.shutting_down():
-                try:
-                    task = self.__tasks_queue.get(block=True, timeout=1)
-                    task()
-                except Empty:
-                    pass
-            return True
+            if self.__config.sila:
+                self.__start_servers()
+                if self.__system.state.shutting_down():
+                    return False
+                print("Press Ctrl-C to stop...", flush=True)
+                while not self.__system.state.shutting_down():
+                    try:
+                        task = self.__tasks_queue.get(block=True, timeout=1)
+                        task()
+                    except Empty:
+                        pass
+                return True
         except KeyboardInterrupt:
             print()
             self.stop()
             return True
+
+        if self.__config.remote_objects:
+            import signal
+
+            from PySide2.QtCore import QCoreApplication
+
+            from sila_cetoni.waa.remoteobjects.remote_object import RemoteObject
+
+            sigint_handler = None
+
+            def handle_sigint(*args):
+                global qapp
+                if qapp is None:
+                    logger.warning("received SIGINT before qapp was initialized")
+                    return
+                logger.debug("received SIGINT -> quitting QCoreApplication")
+                signal.signal(signal.SIGINT, sigint_handler)
+                qapp.quit()
+
+            # this has to be done *before* creating the `QCoreApplication` instance, otherwise destroying the `qapp` at
+            # the end of the program will cause a segmentation fault
+            sigint_handler = signal.signal(signal.SIGINT, handle_sigint)
+
+            # `qapp` must be global otherwise it will cause a segmentation fault when the program exits
+            global qapp
+            qapp = QCoreApplication([])
+
+            self.__create_remote_objects()
+
+            logger.info("Application started")
+            print("Press Ctrl-C to stop...", flush=True)
+
+            exit_code = qapp.exec_()
+            logger.debug(f"Application exited with exit code {exit_code}")
+
+            for remote_object in self.__remote_objects:
+                cast(RemoteObject, remote_object).stop()
+
+            logger.debug("All remote objects stopped")
+
+            return exit_code == 0
 
     def stop(self):
         """
@@ -282,3 +333,37 @@ class Application(Singleton):
                 continue
 
         logger.debug(f"Done creating servers: {[(server.server_name, server) for server in self.__servers]}")
+
+    def __create_remote_objects(self) -> None:
+        """
+        Creates remote objects for all supported devices
+        """
+        logger.debug("Creating remote objects...")
+
+        available_pkgs = available_packages()
+
+        for device in self.__system.all_devices:
+            logger.info(f"Creating remote object for {device}")
+
+            pkg_name = f"sila_cetoni.{device.device_type}"
+            if pkg_name in available_pkgs:
+                pkg = available_pkgs[pkg_name]
+                if not hasattr(pkg, "create_remote_object"):
+                    logger.info(
+                        f"Skipping creation of remote objects for {device} because package {pkg_name} does not "
+                        f"implement 'create_remote_object'"
+                    )
+                    continue
+
+                remote_object = pkg.create_remote_object(device)
+                if remote_object is not None:
+                    self.__remote_objects.append(remote_object)
+                else:
+                    logger.warning(
+                        f"'sila_cetoni.{device.device_type}.create_remote_object' returned 'None' for device {device}"
+                    )
+            else:
+                logger.warning(f"Unhandled device type {device.device_type!r} of device {device}")
+                continue
+
+        logger.debug(f"Done creating remote objects: {[(obj.objectName(), obj) for obj in self.__remote_objects]}")
