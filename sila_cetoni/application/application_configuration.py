@@ -85,6 +85,9 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     __log_file_dir: Optional[Path]
     __regenerate_certificates: bool
     __scan_devices: bool
+    __simulate_missing: bool
+    __sila: bool
+    __remote_objects: bool
     __json_devices: Optional[Dict[str, Dict]]
     __cetoni_device_config_path: Optional[Path]
     __cetoni_max_time_without_battery: timedelta
@@ -98,6 +101,8 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     DEFAULT_REGENERATE_CERTIFICATES: bool = __SCHEMA_PROPERTIES["regenerate_certificates"]["default"]
     DEFAULT_SCAN_DEVICES: bool = __SCHEMA_PROPERTIES["scan_devices"]["default"]
     DEFAULT_SIMULATE_MISSING: bool = __SCHEMA_PROPERTIES["simulate_missing"]["default"]
+    DEFAULT_SILA: bool = True  # __SCHEMA_PROPERTIES["sila"]["default"]
+    DEFAULT_REMOTE_OBJECTS: bool = False  # __SCHEMA_PROPERTIES["remote_objects"]["default"]
 
     __CETONI_SCHEMA_PROPERTIES = SCHEMA["definitions"]["CetoniDevices"]["properties"]
     DEFAULT_MAX_TIME_WITHOUT_BATTERY: timedelta = parse_duration(
@@ -136,6 +141,10 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
                 )
                 self.__scan_devices = config.get("scan_devices", self.DEFAULT_SCAN_DEVICES)
                 self.__simulate_missing = config.get("simulate_missing", self.DEFAULT_SIMULATE_MISSING)
+                # sila not yet supported by the schema, only via CLI flag
+                self.__sila = config.get("sila", self.DEFAULT_SILA)
+                # remote_objects not yet supported by the schema, only via CLI flag
+                self.__remote_objects = config.get("remote_objects", self.DEFAULT_REMOTE_OBJECTS)
 
                 try:
                     self.__cetoni_max_time_without_battery = parse_duration(
@@ -152,11 +161,26 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as err:
             raise RuntimeError(f"Configuration file {self._file_path} is invalid: {err}")
 
+    def sanity_check(self) -> None:
+        """
+        Performs a sanity check of all configured options and raises `ValueError` if there are any problems
+        """
+        if self.__sila and self.__remote_objects:
+            raise ValueError(
+                "Both sila and remote_objects are enabled but currently it is only supported to run either SiLA 2 "
+                "server or use Qt remote objects"
+            )
+        if not self.__sila and not self.__remote_objects:
+            raise ValueError("Neither sila nor remote_objects are enabled - this makes no sense")
+
     def parse_devices(self):
         logger.debug(f"JSON devices {self.__json_devices}")
         self._devices = []
         for package in available_packages().values():
-            self._devices.extend(package.parse_devices(self.__json_devices))  # type: ignore
+            # fmt: off
+            self._devices.extend(package.parse_devices(self.__json_devices))  # type: ignore "Device" is incompatible
+                                                                              # with "ThirdPartyDevice[DeviceDriverABC]"
+            # fmt: on
 
     def __str__(self) -> str:
         return (
@@ -309,6 +333,42 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         if simulate_missing is not self.DEFAULT_SIMULATE_MISSING:
             logger.warning(f"Overwriting simulate_missing with {simulate_missing!r} (was {self.simulate_missing!r})")
             self.__simulate_missing = simulate_missing
+
+    @property
+    def sila(self) -> bool:
+        """
+        Whether to try and simulate devices which are not explicitly set to 'simulated' in the config file if the
+        application cannot connect to them
+        """
+        return self.__sila
+
+    @sila.setter
+    def sila(self, sila: bool):
+        """
+        Sets the `sila` property but only if the given `sila` is not the default value of this
+        property
+        """
+        if sila is not self.DEFAULT_SILA:
+            logger.warning(f"Overwriting sila with {sila!r} (was {self.sila!r})")
+            self.__sila = sila
+
+    @property
+    def remote_objects(self) -> bool:
+        """
+        Whether to try and simulate devices which are not explicitly set to 'simulated' in the config file if the
+        application cannot connect to them
+        """
+        return self.__remote_objects
+
+    @remote_objects.setter
+    def remote_objects(self, remote_objects: bool):
+        """
+        Sets the `remote_objects` property but only if the given `remote_objects` is not the default value of this
+        property
+        """
+        if remote_objects is not self.DEFAULT_REMOTE_OBJECTS:
+            logger.warning(f"Overwriting remote_objects with {remote_objects!r} (was {self.remote_objects!r})")
+            self.__remote_objects = remote_objects
 
     @property
     def cetoni_device_config_path(self) -> Optional[Path]:

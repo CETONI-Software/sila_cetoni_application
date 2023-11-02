@@ -126,6 +126,22 @@ def main(
             "cannot connect to them"
         ),
     ),
+    sila: bool = typer.Option(
+        True,
+        hidden=True,
+        help=(
+            "Whether to use the SiLA 2 stack (experimental, this flag might be removed without warning; only use if "
+            "you know what you are doing!)"
+        ),
+    ),
+    remote_objects: bool = typer.Option(
+        False,
+        hidden=True,
+        help=(
+            "Whether to use QtRemoteObjects (experimental, this flag might be removed without warning; only use if you "
+            "know what you are doing!) Use in combination with --no-sila to only use QtRemoteObjects"
+        ),
+    ),
     config_file: Path = typer.Argument(
         "config.json",
         exists=True,
@@ -167,6 +183,8 @@ def main(
     application.config.regenerate_certificates = regenerate_certificates
     application.config.scan_devices = scan_devices
     application.config.simulate_missing = simulate_missing
+    application.config.sila = sila
+    application.config.remote_objects = remote_objects
     if log_file_dir is not None:
         application.config.log_file_dir = log_file_dir
 
