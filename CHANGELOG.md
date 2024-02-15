@@ -26,11 +26,33 @@ Types of changes
 - `CetoniApplicationSystem.monitor_traffic` decorator to mark feature implementation classes as "monitored". If no Command/Property has been called on the monitored Features then the application will automatically shut down on CETONI's MobDos (only if it is battery powered).
 - New `"max_time_without_battery"` and `"max_time_without_traffic"` configuration options for the JSON config file (only applicable to CETONI MobDos devices)
 - Support for simulated Shimadzu 2020 LC/MS
+- Add option to enable/disable SiLA discovery (CLI: `--enable-discovery`/`--disable-discovery`, JSON: `"enable_discovery"`)
+- If the `SILA_CETONI_SERVER_STARTED_FILE` environment variable is set to a file name, the application will create this file after all servers have been started successfully
+- Add py.typed to make this package PEP 561 compatible
+- The same server (with the same UUID) can now be run on multiple IP addresses (not at once but when the IP of the host changes, for example, due to a new IP being assigned by the network's DHCP server)
+- Self-signed certificates which are close to expiry (< 30 days until *Not After*) or are already expired will now be automatically renewed
+- The 64bit CETONI SDK is now also detected on Raspberry Pis
+- Add experimental Qt Remote Objects support which can be enabled via CLI flags
+
+### Changed
+
+- Add-on packages are now dynamically discovered and the process of parsing the JSON configuration, creating the devices and servers is now decoupled
+- Due to the looser coupling to add-on packages all specific device classes which belong to an add-on package have been moved to their respective add-on package
+- For the same reason all specific options for the JSON configuration have been moved to the respective add-on packages, as well
+- The JSON schema is now built out of the base schema located in this package and the schemas of all available add-on packages
+- Use dynamic version from git in pyproject.toml
+- `ServerConfiguration` now behaves like `ConfigParser` which has the advantage that add-on packages can easily add new sections/options (previously this would have required changes in sila_cetoni_application)
+- `ServerConfiguration` behaves singleton-like such that there is only one unique instance per physical config file to prevent race conditions during writes
 
 ### Fixed
 
 - CETONI SDK's new 'src' subfolder layout is now correctly supported
 - A regenerated SSL certificate wasn't stored
+- Errors during server creation are now caught and cause the application to exit
+- Look for CETONI SDK in `/usr/share/cetoni-sdk` by default on Ubuntu and only use `/usr/share/qmix-sdk` as a fallback
+- Fix an issue causing the MobDos to be powered off too early during a battery swap
+- Fix an error due to missing `libatomic.so` on Linux systems
+- Fix compatibility issues with PySide2 by attempting to import it before importing `qmixsdk`
 
 ## v1.8.0
 
