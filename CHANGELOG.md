@@ -18,6 +18,10 @@ Types of changes
 
 ## Unreleased
 
+## v1.9.0
+
+Sync with sila_cetoni v1.9.0 release
+
 ### Added
 
 - `CetoniMobDosDevice` to represent a CETONI mobile dosage unit
