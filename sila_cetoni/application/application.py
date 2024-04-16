@@ -253,6 +253,14 @@ class Application(Singleton):
                             f"this port is already used by {used_ports[server_config.server_port].server_name!r}! "
                             f"Using port {port} instead."
                         )
+                    elif (
+                        server_config.server_base_port is not None
+                        and server_config.server_base_port != self.__config.server_base_port
+                    ):
+                        logger.warning(
+                            f"Server base port changed from {server_config.server_base_port} to "
+                            f"{self.__config.server_base_port}! Using new base port and starting server on port {port}."
+                        )
                     else:
                         port = server_config.server_port
 
@@ -264,6 +272,7 @@ class Application(Singleton):
                     ca_for_discovery=server_config.ssl_certificate,
                     enable_discovery=self.__config.enable_discovery,
                 )
+                server_config.server_base_port = self.__config.server_base_port
                 server_config.server_port = port
                 server_config.write()
                 used_ports[port] = server

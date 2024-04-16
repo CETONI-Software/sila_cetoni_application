@@ -18,6 +18,10 @@ Types of changes
 
 ## Unreleased
 
+### Changed
+
+- Allow to change the port of server(s) which had been run before on a certain port (i.e. where a server config file exists that remembers that port) to a different port by specifying the CLI option `-p`/`--server-base-port` or by changing the JSON config file option `"server_base_port"` when running the server(s) again.
+
 ## v1.9.1
 
 Sync with sila_cetoni v1.9.1 release

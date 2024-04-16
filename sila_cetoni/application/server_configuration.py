@@ -249,6 +249,20 @@ class ServerConfiguration(Configuration):
         return self.__parser["server"].get("uuid")
 
     @property
+    def server_base_port(self) -> Optional[int]:
+        """
+        The base port of all SiLA Servers as read from the config file
+        """
+        return self.__parser["server"].getint("base_port")
+
+    @server_base_port.setter
+    def server_base_port(self, server_base_port: int):
+        """
+        Set the base port of all SiLA Servers
+        """
+        self.__parser["server"]["base_port"] = str(server_base_port)
+
+    @property
     def server_port(self) -> Optional[int]:
         """
         The port of the SiLA Server as read from the config file
