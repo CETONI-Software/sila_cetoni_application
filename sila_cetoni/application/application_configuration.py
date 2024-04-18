@@ -80,6 +80,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
     __version: int
     __server_ip: str
     __server_base_port: int
+    __server_base_port_cli_overwrite: bool
     __enable_discovery: bool
     __log_level: str
     __log_file_dir: Optional[Path]
@@ -133,6 +134,7 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
                 # optional properties -> default values from schema
                 self.__server_ip = config.get("server_ip", self.DEFAULT_SERVER_IP)
                 self.__server_base_port = int(config.get("server_base_port", self.DEFAULT_SERVER_BASE_PORT))
+                self.__server_base_port_cli_overwrite = False
                 self.__enable_discovery = bool(config.get("enable_discovery", self.DEFAULT_ENABLE_DISCOVERY))
                 self.__log_level = config.get("log_level", self.DEFAULT_LOG_LEVEL)
                 self.__log_file_dir = Path(config["log_file_dir"]) if "log_file_dir" in config else None
@@ -228,7 +230,15 @@ class ApplicationConfiguration(DeviceConfiguration[ThirdPartyDevice[DeviceDriver
         """
         if server_base_port is not self.DEFAULT_SERVER_BASE_PORT:
             logger.warning(f"Overwriting server_base_port with {server_base_port!r} (was {self.server_base_port!r})")
+            self.__server_base_port_cli_overwrite = True
             self.__server_base_port = server_base_port
+
+    @property
+    def server_base_port_cli_overwrite(self) -> bool:
+        """
+        Whether the server_base_port was overwritten via the CLI
+        """
+        return self.__server_base_port_cli_overwrite
 
     @property
     def enable_discovery(self) -> bool:

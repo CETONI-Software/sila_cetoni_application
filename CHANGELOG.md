@@ -21,6 +21,7 @@ Types of changes
 ### Changed
 
 - Allow to change the port of server(s) which had been run before on a certain port (i.e. where a server config file exists that remembers that port) to a different port by specifying the CLI option `-p`/`--server-base-port` or by changing the JSON config file option `"server_base_port"` when running the server(s) again.
+- If you have servers that were run before with an older version, the server config file does not contain the used server base port and the only option to overwrite the server port is to use the CLI option `-p`/`--server-base-port`.
 
 ## v1.9.1
 

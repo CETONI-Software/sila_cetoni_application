@@ -253,7 +253,7 @@ class Application(Singleton):
                             f"this port is already used by {used_ports[server_config.server_port].server_name!r}! "
                             f"Using port {port} instead."
                         )
-                    elif (
+                    elif self.__config.server_base_port_cli_overwrite or (
                         server_config.server_base_port is not None
                         and server_config.server_base_port != self.__config.server_base_port
                     ):
